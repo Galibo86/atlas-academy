@@ -13,11 +13,12 @@ window.LEARN = (function () {
       players = { active: null, list: [] };
       let old = null; try { old = localStorage.getItem(OLDKEY); } catch (e) {}
       if (old) {                                   // progress from before players existed belongs to Feli
-        players.list.push({ id: 'p1', name: 'Feli' }); players.active = 'p1';
+        players.list.push({ id: 'p1', name: 'Feli', locked: true }); players.active = 'p1';
         try { localStorage.setItem(keyFor('p1'), old); } catch (e) {}
       }
       savePlayers();
     }
+    players.list.forEach((x) => { if (x.id === 'p1' && x.name === 'Feli') x.locked = true; });   // Feli's profile can only be deleted in admin mode
     if (players.active && !players.list.some((x) => x.id === players.active)) players.active = null;
     KEY = players.active ? keyFor(players.active) : OLDKEY + ':none';
     return players;
@@ -27,6 +28,16 @@ window.LEARN = (function () {
   function removePlayer(id) {
     players.list = players.list.filter((x) => x.id !== id); try { localStorage.removeItem(keyFor(id)); } catch (e) {}
     if (players.active === id) players.active = null; savePlayers(); loadPlayers(); load();
+  }
+  function backup() {
+    const out = { app: 'atlas-academy', when: new Date().toISOString(), players, data: {} };
+    players.list.forEach((x) => { try { out.data[x.id] = JSON.parse(localStorage.getItem(keyFor(x.id))); } catch (e) {} });
+    return out;
+  }
+  function restore(b) {
+    if (!b || b.app !== 'atlas-academy' || !b.players || !Array.isArray(b.players.list)) throw new Error('not a backup');
+    Object.entries(b.data || {}).forEach(([id, d]) => { if (d) localStorage.setItem(keyFor(id), JSON.stringify(d)); });
+    players = b.players; savePlayers(); loadPlayers(); load();
   }
   const player = () => (players && players.list.find((x) => x.id === players.active)) || null;
   const LANGS = ['en', 'es', 'ca'];
@@ -166,7 +177,7 @@ window.LEARN = (function () {
   }
   function abandonFinal(lang) { L(lang).current = null; save(); }
 
-  return { loadPlayers, usePlayer, addPlayer, removePlayer, player, get players() { return players; },
+  return { backup, restore, loadPlayers, usePlayer, addPlayer, removePlayer, player, get players() { return players; },
     load, save, resetAll, L, word, stageNums, mastered, startCurrent, record, finishSession, abandonFinal, LANGS,
     get db() { return db; } };
 })();

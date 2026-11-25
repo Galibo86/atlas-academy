@@ -69,6 +69,7 @@
       ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, () => clearTimeout(t)));
       b.onclick = () => { if (held) return; LE.usePlayer(b.dataset.id); start(); }; });
     const askDel = (id) => { const x = list.find((p) => p.id === id);
+      if (x.locked && !DEV) return overlay({ title: `${x.name} is protected`, sub: 'Only a grown-up can delete this player.', primary: 'OK', onPrimary: () => {} });
       overlay({ title: `Delete ${x.name}?`, sub: `All of ${x.name}’s progress on this tablet will be deleted.`, primary: 'Keep', secondary: 'Delete',
         onPrimary: () => {}, onSecondary: () => { LE.removePlayer(x.id); LE.players.list.length ? who() : welcome(); } }); };
     if ($('add')) $('add').onclick = () => askName(false);
@@ -107,11 +108,11 @@
         return `<button class="lcard${fresh && l === 'en' ? ' starthere' : ''}" data-l="${l}">${fresh && l === 'en' ? '<span class="ribbon">Start here</span>' : ''}
           <span class="code" style="background:${colors[l]}">${l.toUpperCase()}</span><span class="lname">${T(l).langName}</span><span class="meta">${esc(meta)}</span>
           <span class="bar"><span style="width:${Math.round(p * 100)}%;background:${colors[l]}"></span></span></button>`; }).join('')}</div>
-      <button class="parent" id="reset">Reset progress</button>
+      ${DEV ? '<button class="parent" id="reset">Reset progress</button>' : ''}
       <img class="corner" src="${IMG.curious}" alt="Atlas lying down, curious" draggable="false"></section>`;
     $('back').onclick = welcome;
     view.querySelectorAll('.lcard').forEach((b) => (b.onclick = () => { LE.db.lastLang = b.dataset.l; LE.save(); levels(b.dataset.l); }));
-    $('reset').onclick = () => overlay({ title: 'Reset all progress?', sub: `This deletes ${NAME() || 'the'}${NAME() ? '’s' : ''} progress in the three languages.`, primary: 'Keep progress', secondary: 'Delete progress',
+    if ($('reset')) $('reset').onclick = () => overlay({ title: 'Reset all progress?', sub: `This deletes ${NAME() || 'the'}${NAME() ? '’s' : ''} progress in the three languages.`, primary: 'Keep progress', secondary: 'Delete progress',
       onPrimary: () => {}, onSecondary: () => { LE.resetAll(); language(); } });
   }
 
@@ -740,6 +741,8 @@
       <label>Lección <select id="dvN"></select></label>
       <div class="devrow"><button id="dvGo" class="dvb main">Ir al mapa</button><button id="dvPlay" class="dvb">Jugar ya</button></div>
       <div class="devrow"><button id="dvSkip" class="dvb">Saltar ejercicio</button><button id="dvReset" class="dvb warn">Borrar progreso</button></div>
+      <div class="devrow"><button id="dvSave" class="dvb">Guardar copia</button><button id="dvLoad" class="dvb">Cargar copia</button></div>
+      <input type="file" id="dvFile" accept=".json,application/json" hidden>
       <button id="dvClose" class="dvb">Cerrar</button></div>`;
     stage.appendChild(el);
     // changing one menu keeps what was already picked in the others whenever it still exists
@@ -763,8 +766,21 @@
     $('dvGo').onclick = () => { const { l, id } = jump(); id === 'numbers' ? map(l) : tmap(l, id); };
     $('dvPlay').onclick = () => { const { l, id } = jump(); id === 'numbers' ? game(l) : tgame(l, id); };
     $('dvSkip').onclick = () => { el.remove(); devSkip(); };
-    $('dvReset').onclick = () => { LE.resetAll(); el.remove(); welcome(); };
+    $('dvReset').onclick = () => { el.remove(); overlay({ title: `Borrar el progreso de ${NAME() || 'este jugador'}?`, sub: 'No se puede deshacer (salvo con una copia).', primary: 'No', secondary: 'Borrar',
+      onPrimary: () => {}, onSecondary: () => { LE.resetAll(); welcome(); } }); };
     $('dvClose').onclick = () => el.remove();
+    // backup of every player on this tablet, as a file you can keep (Downloads, Drive, email…)
+    $('dvSave').onclick = () => { const b = LE.backup(), d = b.when.slice(0, 10);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(b, null, 1)], { type: 'application/json' }));
+      a.download = `atlas-academy-copia-${d}.json`; document.body.appendChild(a); a.click(); a.remove(); };
+    $('dvLoad').onclick = () => $('dvFile').click();
+    $('dvFile').onchange = () => { const f = $('dvFile').files[0]; if (!f) return; f.text().then((txt) => {
+      let b; try { b = JSON.parse(txt); } catch (e) { b = null; }
+      const names = b && b.players && b.players.list ? b.players.list.map((x) => x.name).join(', ') : '';
+      el.remove();
+      if (!names) return overlay({ title: 'Ese archivo no es una copia', sub: 'Elige un archivo atlas-academy-copia-….json', primary: 'OK', onPrimary: () => {} });
+      overlay({ title: 'Cargar esta copia?', sub: `Jugadores: ${names}. Sustituye lo que hay ahora en esta tableta.`, primary: 'No', secondary: 'Cargar',
+        onPrimary: () => {}, onSecondary: () => { LE.restore(b); welcome(); } }); }); };
   }
   function devSkip() {                 // answer the current exercise correctly
     if (!G || !document.querySelector('.screen.game')) return;
