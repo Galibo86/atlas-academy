@@ -18,13 +18,13 @@ window.LEARN = (function () {
       }
       savePlayers();
     }
-    players.list.forEach((x) => { if (x.id === 'p1' && x.name === 'Feli') x.locked = true; });   // Feli's profile can only be deleted in admin mode
+    players.list.forEach((x) => { if (x.id === 'p1' || x.name.toLowerCase() === 'feli') x.locked = true; });   // Feli's profile can only be deleted in admin mode
     if (players.active && !players.list.some((x) => x.id === players.active)) players.active = null;
     KEY = players.active ? keyFor(players.active) : OLDKEY + ':none';
     return players;
   }
   function usePlayer(id) { players.active = id; savePlayers(); KEY = keyFor(id); load(); }
-  function addPlayer(name) { const id = 'p' + Date.now().toString(36); players.list.push({ id, name }); usePlayer(id); return id; }
+  function addPlayer(name) { const id = 'p' + Date.now().toString(36); players.list.push({ id, name, locked: name.toLowerCase() === 'feli' || undefined }); usePlayer(id); return id; }
   function removePlayer(id) {
     players.list = players.list.filter((x) => x.id !== id); try { localStorage.removeItem(keyFor(id)); } catch (e) {}
     if (players.active === id) players.active = null; savePlayers(); loadPlayers(); load();

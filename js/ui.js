@@ -729,7 +729,9 @@
   // Test mode (only on the staging site, or with #dev / ?dev in the address):
   // jump to any language, level, stage and lesson; skip exercises.
   // =====================================================================
-  const DEV = /^staging--/.test(location.hostname) || /[?&]dev\b/.test(location.search) || location.hash === '#dev';
+  // ?nino (or #nino) on the test site = see it exactly as the child does, without admin powers
+  const KID = /[?&]nino\b/.test(location.search) || location.hash === '#nino';
+  const DEV = !KID && (/^staging--/.test(location.hostname) || /[?&]dev\b/.test(location.search) || location.hash === '#dev');
   function devPanel() {
     const langs = LE.LANGS; const old = document.getElementById('devpanel'); if (old) { old.remove(); return; }
     const el = document.createElement('div'); el.id = 'devpanel'; el.className = 'devpanel';
