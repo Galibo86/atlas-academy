@@ -230,3 +230,16 @@ h1{margin:0}
 .askname input{width:460px;height:92px;border-radius:24px;border:3px solid var(--blue);padding:0 28px;font:800 48px/1 'Baloo 2',sans-serif;color:var(--ink);background:#fff;outline:none}
 .askname .bigbtn[disabled]{opacity:.45}.sub.small{font-size:20px;color:#B4232A;min-height:24px}
 .askdog{position:absolute;right:70px;bottom:40px;width:300px;pointer-events:none}
+
+/* secret code */
+.pinov .pincard{width:420px;align-items:center}
+.pincard.bad .pindots{animation:shake .4s}.pincard.bad .pindots i.on,.pincard.bad .pindots i{border-color:var(--red)}
+.pindots{display:flex;gap:18px;margin:6px 0 10px}.pindots i{width:26px;height:26px;border-radius:50%;border:3px solid #B3C1D8}.pindots i.on{background:var(--blue);border-color:var(--blue)}
+.pinkeys{display:grid;grid-template-columns:repeat(3,96px);gap:12px}
+.pk{height:76px;border-radius:20px;background:#fff;border:3px solid var(--line);box-shadow:0 5px 0 #C2CFE6;font:800 36px/1 'Baloo 2',sans-serif;color:var(--ink)}
+.pk.esc{color:#8FA3C7}.pk:active{transform:translateY(3px)}
+.plock{position:absolute;right:16px;top:14px;font-size:24px}.pcard{position:relative}
+.devcodes{display:flex;flex-direction:column;gap:6px;border-top:1px solid #E3E8F2;padding-top:8px}
+.dcode span{flex:1;font-weight:800}.dvpin{width:120px;height:40px;border-radius:10px;border:2px solid #D4DCEB;padding:0 10px;font:800 20px/1 Nunito,sans-serif;letter-spacing:4px}
+.dvpin.err{border-color:var(--red)}
+.devcard{max-height:760px;overflow-y:auto}

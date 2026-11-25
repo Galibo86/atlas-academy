@@ -47,8 +47,31 @@
       <img class="whero" src="${IMG.sitting}" alt="Atlas, a black and white border collie" draggable="false">
       <div class="wbubble">${LE.player() ? `Hi ${esc(NAME())}! Ready?` : 'Hi! Ready?'}</div>
       ${LE.players.list.length ? `<button class="pill whopill" id="who">${LE.player() ? `Not ${esc(NAME())}? ` : ''}Change player</button>` : ''}</section>`;
-    $('play').onclick = () => (!LE.players.list.length ? askName(true) : !LE.player() || LE.players.list.length > 1 ? who() : start());   // several players: always ask who is playing
+    $('play').onclick = () => (!LE.players.list.length ? askName(true) : !LE.player() || LE.players.list.length > 1 ? who() : enter(LE.player().id));   // several players: always ask who is playing
     if ($('who')) $('who').onclick = who;
+  }
+  // a player with a secret code must type it (once per session); admin mode skips it
+  let unlocked = null;
+  function enter(id) {
+    const x = LE.players.list.find((p) => p.id === id);
+    if (!x.pin || DEV || unlocked === id) { unlocked = id; LE.usePlayer(id); return start(); }
+    pinPad(x, () => { unlocked = id; LE.usePlayer(id); start(); });
+  }
+  function pinPad(x, ok) {
+    let code = '';
+    const el = document.createElement('div'); el.className = 'overlay pinov';
+    const draw = (bad) => { el.innerHTML = `<div class="card pincard${bad ? ' bad' : ''}" role="dialog" aria-modal="true">
+        <div class="ovtitle">${esc(x.name)}, what’s your code?</div>
+        <div class="pindots">${[0, 1, 2, 3].map((i) => `<i class="${i < code.length ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="pinkeys">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '×', '0', '⌫'].map((k) => `<button class="pk${k === '×' ? ' esc' : ''}" data-k="${k}" aria-label="${k === '×' ? 'Cancel' : k === '⌫' ? 'Delete' : k}">${k}</button>`).join('')}</div></div>`;
+      el.querySelectorAll('.pk').forEach((b) => (b.onclick = () => press(b.dataset.k))); };
+    const press = (k) => {
+      if (k === '×') return el.remove();
+      if (k === '⌫') { code = code.slice(0, -1); return draw(); }
+      if (code.length >= 4) return; code += k; draw();
+      if (code.length === 4) setTimeout(() => { if (code === x.pin) { el.remove(); ok(); } else { code = ''; draw(true); } }, 200);
+    };
+    draw(); stage.appendChild(el);
   }
   const start = () => { LE.db.lastLang ? levels(LE.db.lastLang) : language(); };
 
@@ -59,7 +82,7 @@
     const list = LE.players.list;
     view.innerHTML = `<section class="screen lang who">
       <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>Who is playing?</h1></div>
-      <div class="cards">${list.map((x, i) => `<div class="pwrap"><button class="lcard pcard" data-id="${x.id}"><span class="pav" style="background:${PCOL[i % PCOL.length]}">${esc(x.name.slice(0, 1).toUpperCase())}</span><span class="lname">${esc(x.name)}</span></button>
+      <div class="cards">${list.map((x, i) => `<div class="pwrap"><button class="lcard pcard" data-id="${x.id}"><span class="pav" style="background:${PCOL[i % PCOL.length]}">${esc(x.name.slice(0, 1).toUpperCase())}</span><span class="lname">${esc(x.name)}</span>${x.pin ? '<span class="plock" aria-label="Has a code">🔒</span>' : ''}</button>
 </div>`).join('')}
         ${list.length < 6 ? `<button class="lcard pcard padd" id="add"><span class="pav plus">+</span><span class="lname">New player</span></button>` : ''}</div></section>`;
     $('back').onclick = welcome;
@@ -67,7 +90,7 @@
     view.querySelectorAll('.pcard[data-id]').forEach((b) => { let t = null, held = false;
       b.addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { held = true; askDel(b.dataset.id); }, 1500); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, () => clearTimeout(t)));
-      b.onclick = () => { if (held) return; LE.usePlayer(b.dataset.id); start(); }; });
+      b.onclick = () => { if (held) return; enter(b.dataset.id); }; });
     const askDel = (id) => { const x = list.find((p) => p.id === id);
       if (x.locked && !DEV) return overlay({ title: `${x.name} is protected`, sub: 'Only a grown-up can delete this player.', primary: 'OK', onPrimary: () => {} });
       overlay({ title: `Delete ${x.name}?`, sub: `All of ${x.name}’s progress on this tablet will be deleted.`, primary: 'Keep', secondary: 'Delete',
@@ -88,7 +111,7 @@
     const clean = () => inp.value.trim().replace(/\s+/g, ' ');
     const taken = (n) => LE.players.list.some((x) => x.name.toLowerCase() === n.toLowerCase());
     inp.oninput = () => { const n = clean(); ok.disabled = !n || taken(n); $('nmsg').textContent = n && taken(n) ? 'That name is already here — tap it on the list.' : ''; };
-    const go = () => { const n = clean(); if (!n || taken(n)) return; LE.addPlayer(n.charAt(0).toUpperCase() + n.slice(1)); inp.blur(); start(); };
+    const go = () => { const n = clean(); if (!n || taken(n)) return; unlocked = LE.addPlayer(n.charAt(0).toUpperCase() + n.slice(1)); inp.blur(); start(); };
     ok.onclick = go; inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     setTimeout(() => inp.focus(), 50);
   }
@@ -745,6 +768,9 @@
       <div class="devrow"><button id="dvSkip" class="dvb">Saltar ejercicio</button><button id="dvReset" class="dvb warn">Borrar progreso</button></div>
       <div class="devrow"><button id="dvSave" class="dvb">Guardar copia</button><button id="dvLoad" class="dvb">Cargar copia</button></div>
       <input type="file" id="dvFile" accept=".json,application/json" hidden>
+      <div class="devcodes"><b>Códigos</b>${LE.players.list.map((x) => `<div class="devrow dcode"><span>${esc(x.name)}</span>
+        <input class="dvpin" data-id="${x.id}" inputmode="numeric" maxlength="4" pattern="[0-9]*" value="${esc(x.pin || '')}" placeholder="––––">
+        <button class="dvb dvpinok" data-id="${x.id}">Guardar</button></div>`).join('') || '<div class="devrow">Aún no hay jugadores</div>'}</div>
       <button id="dvClose" class="dvb">Cerrar</button></div>`;
     stage.appendChild(el);
     // changing one menu keeps what was already picked in the others whenever it still exists
@@ -771,6 +797,9 @@
     $('dvReset').onclick = () => { el.remove(); overlay({ title: `Borrar el progreso de ${NAME() || 'este jugador'}?`, sub: 'No se puede deshacer (salvo con una copia).', primary: 'No', secondary: 'Borrar',
       onPrimary: () => {}, onSecondary: () => { LE.resetAll(); welcome(); } }); };
     $('dvClose').onclick = () => el.remove();
+    el.querySelectorAll('.dvpinok').forEach((b) => (b.onclick = () => { const inp = el.querySelector(`.dvpin[data-id="${b.dataset.id}"]`), v = inp.value.trim();
+      if (v && !/^\d{4}$/.test(v)) { inp.classList.add('err'); return; }
+      inp.classList.remove('err'); LE.setPin(b.dataset.id, v || null); b.textContent = v ? 'Guardado ✓' : 'Quitado ✓'; setTimeout(() => (b.textContent = 'Guardar'), 1500); }));
     // backup of every player on this tablet, as a file you can keep (Downloads, Drive, email…)
     $('dvSave').onclick = () => { const b = LE.backup(), d = b.when.slice(0, 10);
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(b, null, 1)], { type: 'application/json' }));

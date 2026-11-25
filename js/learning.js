@@ -39,6 +39,7 @@ window.LEARN = (function () {
     Object.entries(b.data || {}).forEach(([id, d]) => { if (d) localStorage.setItem(keyFor(id), JSON.stringify(d)); });
     players = b.players; savePlayers(); loadPlayers(); load();
   }
+  function setPin(id, pin) { const x = players.list.find((p) => p.id === id); if (!x) return; if (pin) x.pin = pin; else delete x.pin; savePlayers(); }
   const player = () => (players && players.list.find((x) => x.id === players.active)) || null;
   const LANGS = ['en', 'es', 'ca'];
 
@@ -177,7 +178,7 @@ window.LEARN = (function () {
   }
   function abandonFinal(lang) { L(lang).current = null; save(); }
 
-  return { backup, restore, loadPlayers, usePlayer, addPlayer, removePlayer, player, get players() { return players; },
+  return { setPin, backup, restore, loadPlayers, usePlayer, addPlayer, removePlayer, player, get players() { return players; },
     load, save, resetAll, L, word, stageNums, mastered, startCurrent, record, finishSession, abandonFinal, LANGS,
     get db() { return db; } };
 })();
