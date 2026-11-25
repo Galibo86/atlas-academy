@@ -153,6 +153,7 @@
       <section id="bonus" class="bonus" hidden><span class="chip bonuschip" id="bchip"></span><div class="bwrap"><div id="brows" class="brows"></div><button id="btnCheckB" class="check" disabled></button></div></section>
       <section id="keyboard" class="keyboard"></section>
       <section id="choices" class="choices" hidden></section>
+      <section id="tool" class="tool" hidden></section>
       <aside class="atlas"><div id="bubble" class="bubble"></div><div id="lives" class="lives" role="img"></div><img id="atlasImg" alt="Atlas" draggable="false"><video id="atlasVid" muted playsinline preload="auto" aria-hidden="true" hidden></video></aside>
       <div id="hint" class="hint" hidden></div></section>`; }
   function buildKeyboard() {
@@ -426,9 +427,9 @@
   // Topic levels (comparatives, hiato/diptongo…): levels menu, map, game
   // =====================================================================
   const LX = {
-    en: { choose: 'Choose a level', newTag: 'New', soon: 'More levels coming soon', lvl: 'Level', stageDone: (n) => `Stage ${n} complete!`, levelDone: 'Level complete!', star: 'You won the star!', allStages: 'All stages', finalTitle: 'Final stage', rightAnswer: 'Right answer', notThat: 'Not that one — try another!' },
-    es: { choose: 'Elige un nivel', newTag: 'Nuevo', soon: 'Pronto habrá más niveles', lvl: 'Nivel', stageDone: (n) => `¡Etapa ${n} completada!`, levelDone: '¡Nivel completado!', star: '¡Has ganado la estrella!', allStages: 'Todas las etapas', finalTitle: 'Etapa final', rightAnswer: 'Respuesta correcta', notThat: '¡Esa no! Prueba otra.' },
-    ca: { choose: 'Tria un nivell', newTag: 'Nou', soon: 'Aviat hi haurà més nivells', lvl: 'Nivell', stageDone: (n) => `Etapa ${n} completada!`, levelDone: 'Nivell completat!', star: 'Has guanyat l’estrella!', allStages: 'Totes les etapes', finalTitle: 'Etapa final', rightAnswer: 'Resposta correcta', notThat: 'Aquesta no! Prova’n una altra.' }
+    en: { choose: 'Choose a level', newTag: 'New', soon: 'More levels coming soon', lvl: 'Level', stageDone: (n) => `Stage ${n} complete!`, levelDone: 'Level complete!', star: 'You won the star!', allStages: 'All stages', finalTitle: 'Final stage', rightAnswer: 'Right answer', notThat: 'Not that one — try another!', missCut: 'A cut is missing!', nowDecide: 'Now: which one is it?' },
+    es: { choose: 'Elige un nivel', newTag: 'Nuevo', soon: 'Pronto habrá más niveles', lvl: 'Nivel', stageDone: (n) => `¡Etapa ${n} completada!`, levelDone: '¡Nivel completado!', star: '¡Has ganado la estrella!', allStages: 'Todas las etapas', finalTitle: 'Etapa final', rightAnswer: 'Respuesta correcta', notThat: '¡Esa no! Prueba otra.', missCut: '¡Falta algún corte!', nowDecide: 'Ahora: ¿hiato o diptongo?' },
+    ca: { choose: 'Tria un nivell', newTag: 'Nou', soon: 'Aviat hi haurà més nivells', lvl: 'Nivell', stageDone: (n) => `Etapa ${n} completada!`, levelDone: 'Nivell completat!', star: 'Has guanyat l’estrella!', allStages: 'Totes les etapes', finalTitle: 'Etapa final', rightAnswer: 'Resposta correcta', notThat: 'Aquesta no! Prova’n una altra.', missCut: 'Falta algun tall!', nowDecide: 'Ara: quin és?' }
   };
   const getLevel = (lang, id) => (window.LEVELS[lang] || []).find((l) => l.id === id);
   function tState(lang, id) {
@@ -520,18 +521,24 @@
     const fixed = (c) => c === ' ' || c === '|';                 // spaces and row breaks are not typed
     const max = fin ? CFG.finalBones : ex.kind === 'write' ? CFG.livesFor(letters.filter((c) => !fixed(c)).length) : 3;
     Object.assign(G, { ex, letters, max, lives: fin ? G.cur.bonesLeft : max, typed: letters.map((c) => (fixed(c) ? c : null)), locked: letters.map(fixed),
-      bad: [], wrongOpts: [], resets: 0, failed: false, hinted: false, ghost: false, cursor: null, done: false, phase: 'play', isBonus: false });
+      bad: [], wrongOpts: [], resets: 0, failed: false, hinted: false, ghost: false, cursor: null, done: false, phase: 'play', isBonus: false,
+      cuts: new Set(), cutsOk: new Set(), cutsBad: [], miss: false, splitDone: false, place: {}, sel: null, sortOk: new Set(), sortBad: [] });
     $('keyboard').innerHTML = ''; if (ex.kind === 'write') buildKeyboard();
     render();
   }
   function tRender() {
     const t = G.t, ex = G.ex, lv = G.lv, cur = G.cur;
-    $('progress').innerHTML = cur.final ? `${esc(LX[G.lang].finalTitle)} · <b>${cur.idx + 1} / ${cur.plan.length}</b>` : `${esc(t.stage)} ${cur.stage + 1} · <b>${esc(t.paw)} ${cur.idx + 1}</b>`;
+    $('progress').innerHTML = cur.final && ex.kind === 'sort' ? `${esc(LX[G.lang].finalTitle)} · <b>${ex.words.filter((x) => G.place[x.w]).length} / ${ex.words.length}</b>`
+      : cur.final ? `${esc(LX[G.lang].finalTitle)} · <b>${cur.idx + 1} / ${cur.plan.length}</b>` : `${esc(t.stage)} ${cur.stage + 1} · <b>${esc(t.paw)} ${cur.idx + 1}</b>`;
     $('chip').textContent = ex.chip || lv.chip[cur.lesson] || ''; $('chip').classList.remove('new');
     const q = $('question'); q.className = 'question topic'; q.innerHTML = ex.prompt;
-    const write = ex.kind === 'write';
-    document.querySelector('.game .row').hidden = !write; $('keyboard').hidden = !write; $('choices').hidden = write; $('bonus').hidden = true;
+    const write = ex.kind === 'write', split = ex.kind === 'split', sort = ex.kind === 'sort';
+    const showChoices = ex.kind === 'choice' || (split && G.splitDone && ex.decide);
+    document.querySelector('.game .row').hidden = !write; $('keyboard').hidden = !write; $('choices').hidden = !showChoices; $('bonus').hidden = true;
+    $('choices').classList.toggle('low', split); $('tool').hidden = !(split || sort); $('tool').className = 'tool' + (split ? ' split' + (ex.decide ? ' decide' : '') : sort ? ' sort' : '');
     let full = false;
+    if (split) full = renderSplit();
+    if (sort) full = renderSort();
     if (write) {
       const rows = G.letters.join('').split('|'), n = Math.max(...rows.map((r) => r.length)), size = rows.length > 1 ? [42, 4, 32] : n <= 7 ? [76, 10, 52] : n <= 10 ? [60, 7, 42] : [50, 5, 36];
       const slots = $('slots'); slots.style.gap = size[1] + 'px'; slots.classList.toggle('two', rows.length > 1);
@@ -543,7 +550,8 @@
       slots.querySelectorAll('.slot:not(.gap)').forEach((d) => d.addEventListener('pointerdown', (e) => onSlotDown(e, Number(d.dataset.i))));
       full = G.typed.every((x) => x != null);
       const btn = $('btnCheck'); btn.textContent = t.check; btn.disabled = !full || G.bad.length > 0 || G.done;
-    } else {
+    }
+    if (showChoices) {
       const c = $('choices');
       c.innerHTML = ex.options.map((o, i) => { const cls = G.done && o === ex.answer ? ' right' : G.wrongOpts.includes(o) ? ' wrong' : '';
         return `<button class="opt${cls}" data-o="${i}" ${G.done || G.wrongOpts.includes(o) ? 'disabled' : ''}>${esc(o)}</button>`; }).join('');
@@ -556,9 +564,61 @@
     else if (G.phase === 'reset') { mood = 'verysad'; say = t.resetTitle; warn = true; }
     else if (drag && drag.moved) { mood = 'curious'; say = t.drag; }
     else if (G.lives === 1 && G.max > 1) { mood = 'sad'; say = t.last; warn = true; }
-    else if (G.lives < G.max) { mood = 'worried'; say = write ? t.lost1 : LX[G.lang].notThat; warn = true; }
+    else if (split && G.splitDone && !G.wrongOpts.length) { mood = 'curious'; say = LX[G.lang].nowDecide; }
+    else if (G.lives < G.max) { mood = 'worried'; say = G.miss ? LX[G.lang].missCut : write || sort || (split && !G.splitDone) ? t.lost1 : LX[G.lang].notThat; warn = true; }
     else if (full) { mood = 'curious'; say = t.ready; }
     setAtlas(mood, say, warn);
+  }
+  // ---- cut the word into syllables: tap the gaps between letters ----
+  function renderSplit() {
+    const ex = G.ex, L = Array.from(ex.word), lock = G.splitDone || G.done || G.cutsBad.length > 0;
+    let h = '<div class="sword">';
+    L.forEach((ch, i) => {
+      h += `<span class="sl">${esc(ch)}</span>`;
+      if (i < L.length - 1) { const cls = (G.cuts.has(i) ? ' on' : '') + (G.cutsOk.has(i) ? ' ok' : '') + (G.cutsBad.includes(i) ? ' bad' : '');
+        h += `<button class="sg${cls}" data-g="${i}" aria-label="Cortar después de ${esc(ch)}" ${lock ? 'disabled' : ''}><i></i></button>`; }
+    });
+    h += '</div>';
+    if (!G.splitDone) h += `<button id="btnSplit" class="check" ${G.cuts.size && !lock ? '' : 'disabled'}>${esc(G.t.check)}</button>`;
+    $('tool').innerHTML = h;
+    $('tool').querySelectorAll('.sg').forEach((b) => (b.onclick = () => { const i = Number(b.dataset.g); if (G.cutsOk.has(i)) return;
+      G.miss = false; if (G.cuts.has(i)) G.cuts.delete(i); else G.cuts.add(i); render(); }));
+    const bs = $('btnSplit'); if (bs) bs.onclick = checkSplit;
+    return G.cuts.size > 0 && !G.splitDone;
+  }
+  function checkSplit() {
+    if (G.done || G.splitDone) return;
+    const right = new Set(G.ex.cuts), bad = [...G.cuts].filter((i) => !right.has(i)), missing = G.ex.cuts.filter((i) => !G.cuts.has(i));
+    [...G.cuts].filter((i) => right.has(i)).forEach((i) => G.cutsOk.add(i));
+    if (!bad.length && !missing.length) { G.splitDone = true; return G.ex.decide ? render() : tComplete(); }
+    G.cutsBad = bad; G.miss = !bad.length; const out = tLoseBone(); render();
+    setTimeout(() => { bad.forEach((i) => G.cuts.delete(i)); G.cutsBad = []; if (out) { G.phase = 'reset'; render(); tOut(); } else render(); }, 750);
+  }
+  // ---- baskets: tap a word, then its basket ----
+  function renderSort() {
+    const ex = G.ex, lock = G.done || G.sortBad.length > 0;
+    const chip = (x) => `<button class="sw${G.sel === x.w ? ' sel' : ''}${G.sortOk.has(x.w) ? ' ok' : ''}${G.sortBad.includes(x.w) ? ' bad' : ''}" data-w="${esc(x.w)}" ${lock ? 'disabled' : ''}>${esc(x.w)}</button>`;
+    const pool = ex.words.filter((x) => !G.place[x.w]);
+    $('tool').innerHTML = `<div class="spool">${pool.map(chip).join('')}</div>
+      <div class="bins">${ex.bins.map((b, k) => `<div class="bin${G.sel ? ' ready' : ''}" data-b="${k + 1}"><div class="bt">${esc(b)}</div><div class="bw">${ex.words.filter((x) => G.place[x.w] === k + 1).map(chip).join('')}</div></div>`).join('')}</div>
+      <button id="btnSort" class="check" ${pool.length || lock ? 'disabled' : ''}>${esc(G.t.check)}</button>`;
+    $('tool').querySelectorAll('.sw').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const w = b.dataset.w; if (G.sortOk.has(w)) return;
+      const inBin = G.place[w];
+      if (inBin && G.sel && G.sel !== w) { G.place[G.sel] = inBin; G.sel = null; }   // a word is picked: tapping inside a basket drops it there
+      else if (inBin) { G.place[w] = 0; G.sel = null; }                               // nothing picked: send this word back up
+      else G.sel = G.sel === w ? null : w;
+      render(); }));
+    $('tool').querySelectorAll('.bin').forEach((b) => (b.onclick = () => { if (!G.sel || lock) return; G.place[G.sel] = Number(b.dataset.b); G.sel = null; render(); }));
+    $('btnSort').onclick = checkSort;
+    return !pool.length;
+  }
+  function checkSort() {
+    if (G.done) return;
+    const bad = [];
+    G.ex.words.forEach((x) => { if (G.sortOk.has(x.w)) return; if (G.place[x.w] === x.bin) G.sortOk.add(x.w); else bad.push(x.w); });
+    if (!bad.length) return tComplete();
+    G.sortBad = bad; const out = tLoseBone(); render();
+    setTimeout(() => { bad.forEach((w) => { G.place[w] = 0; }); G.sortBad = []; if (out) { G.phase = 'reset'; render(); tOut(); } else render(); }, 900);
   }
   function tLoseBone() {
     G.failed = true; G.lives -= 1; if (G.cur.final) { G.cur.bonesLeft = G.lives; LE.save(); }
@@ -580,8 +640,9 @@
   function tOut() {
     const t = G.t;
     if (G.cur.final) return overlay({ side: true, title: t.finalOutTitle, sub: t.finalOutSub, primary: t.finalRetry, onPrimary: () => tgame(G.lang, G.id, true) });
-    overlay({ side: true, title: t.resetTitle, sub: `${LX[G.lang].rightAnswer}: ${G.ex.answer.replace('|', ' … ')}`, primary: t.tryAgain, onPrimary: () => {
-      G.resets += 1; G.typed = G.letters.map((c) => (c === ' ' ? ' ' : null)); G.locked = G.letters.map((c) => c === ' ');
+    overlay({ side: true, title: t.resetTitle, sub: `${LX[G.lang].rightAnswer}: ${(G.ex.answerText || G.ex.answer).replace('|', ' … ')}`, primary: t.tryAgain, onPrimary: () => {
+      G.resets += 1; G.typed = G.letters.map((c) => (c === ' ' || c === '|' ? c : null)); G.locked = G.letters.map((c) => c === ' ' || c === '|');
+      Object.assign(G, { cuts: new Set(), cutsOk: new Set(), cutsBad: [], miss: false, splitDone: false, place: {}, sel: null, sortOk: new Set(), sortBad: [] });
       G.wrongOpts = []; G.lives = G.max; G.phase = 'play'; render(); } });
   }
   function tComplete() {
@@ -651,7 +712,7 @@
       LE.db.lastLang = l;
       if (id === 'numbers') { const st = LE.L(l); st.stagesDone = s; st.lesson = s >= 4 ? 0 : n; st.finalDone = false; st.current = null; }
       else { const st = tState(l, id); st.stage = s; st.lesson = n; st.finalDone = false; st.current = null; }
-      LE.save(); el.remove(); return { l, id }; };
+      LE.save(); el.remove(); document.querySelectorAll('.overlay').forEach((o) => o.remove()); return { l, id }; };
     $('dvGo').onclick = () => { const { l, id } = jump(); id === 'numbers' ? map(l) : tmap(l, id); };
     $('dvPlay').onclick = () => { const { l, id } = jump(); id === 'numbers' ? game(l) : tgame(l, id); };
     $('dvSkip').onclick = () => { el.remove(); devSkip(); };
@@ -661,6 +722,8 @@
   function devSkip() {                 // answer the current exercise correctly
     if (!G || !document.querySelector('.screen.game')) return;
     if (G.topic && G.ex.kind === 'choice') return tChoose(G.ex.answer);
+    if (G.topic && G.ex.kind === 'split') { if (!G.splitDone) { G.cuts = new Set(G.ex.cuts); checkSplit(); } if (G.ex.decide && !G.done) tChoose(G.ex.answer); return; }
+    if (G.topic && G.ex.kind === 'sort') { G.ex.words.forEach((x) => { G.place[x.w] = x.bin; }); return checkSort(); }
     if (G.isBonus) { G.rows.forEach((w, r) => w.forEach((c, i) => { G.typed[r * CFG.bonusBoxes + i] = c; })); return check(); }
     G.typed = G.letters.slice(); check();
   }

@@ -110,24 +110,36 @@
     if (m) { const j = m.index; return esc(w.slice(0, j)) + `<b class="vp">${esc(pair[0])}</b>h<b class="vp">${esc(pair[1])}</b>` + esc(w.slice(j + 3)); }
     return esc(w);
   }
-  function hdExercise(item, mode) {
-    const [w, syl, wrong, pair, t] = item;
-    const why = t === 'D' ? `${syl}: las dos vocales van en la misma sílaba → diptongo` : `${syl}: las vocales van en sílabas distintas → hiato`;
-    if (mode === 'syl') return { kind: 'choice', id: w, prompt: `<div class="tword">${esc(w)}</div><div class="tadj">¿Cómo se separa en sílabas?</div>`,
-      options: shuffle([syl, wrong]), answer: syl, explain: why };
-    const word = mode === 'help' ? markPair(w, pair) : esc(w);
-    return { kind: 'choice', id: w, prompt: `<div class="tword">${word}</div>${mode === 'help' ? '<div class="tadj">Diptongo: misma sílaba · Hiato: sílabas distintas</div>' : ''}`,
-      options: ['Diptongo', 'Hiato'], answer: t === 'D' ? 'Diptongo' : 'Hiato', explain: why };
+  const whyOf = (syl, t) => (t === 'D' ? `${syl}: las dos vocales van en la misma sílaba → diptongo` : `${syl}: las vocales van en sílabas distintas → hiato`);
+  const typeOf = (t) => (t === 'D' ? 'Diptongo' : 'Hiato');
+  function cutsOf(syl) {                       // 'pa-ís' → [1]: a cut after letter 1
+    const c = []; let k = 0; Array.from(syl).forEach((ch) => { if (ch === '-') c.push(k - 1); else k++; }); return c;
+  }
+  function hdHelp(item) {                      // lesson 1: vowel pair in colour, choose
+    const [w, syl, , pair, t] = item;
+    return { kind: 'choice', id: w, prompt: `<div class="tword">${markPair(w, pair)}</div><div class="tadj">Diptongo: misma sílaba · Hiato: sílabas distintas</div>`,
+      options: ['Diptongo', 'Hiato'], answer: typeOf(t), explain: whyOf(syl, t) };
+  }
+  function hdSplit(item, decide) {             // lessons 2 and 3: tap between letters to cut; lesson 3 then decides
+    const [w, syl, , , t] = item;
+    return { kind: 'split', id: w, word: w, cuts: cutsOf(syl), decide, options: decide ? ['Diptongo', 'Hiato'] : null,
+      answer: decide ? typeOf(t) : syl, answerText: decide ? `${syl} · ${typeOf(t)}` : syl,
+      prompt: `<div class="tadj big">${decide ? 'Primero corta la palabra en sílabas. Después: ¿hiato o diptongo?' : 'Toca entre las letras para cortar la palabra en sílabas'}</div>`,
+      explain: whyOf(syl, t) };
+  }
+  function hdSort(items) {                     // final stage: put each word in its basket
+    return { kind: 'sort', id: 'sort', words: shuffle(items.map(([w, syl, , , t]) => ({ w, syl, bin: t === 'D' ? 1 : 2 }))), bins: ['Diptongo', 'Hiato'],
+      prompt: '<div class="tadj big">Toca una palabra y después su cesta</div>', explain: 'Diptongo: vocales en la misma sílaba · Hiato: en sílabas distintas' };
   }
   const HIATO = {
     id: 'hiato', lang: 'es', title: '¿Hiato o diptongo?', sub: 'ca-mión · le-ón', color: '#E5484D',
     stages: HD.map((items, i) => ({ label: ['aire, río…', 'ciudad, país…', 'bueno, leer…'][i], items })),
-    lessons: ['Con pista', 'Sin pista', 'Separa sílabas'],
-    lessonDesc: ['Las dos vocales vienen marcadas en color', 'Ahora sin colores: ¿hiato o diptongo?', 'Elige cómo se separa la palabra en sílabas'],
-    chip: ['¿Hiato o diptongo?', '¿Hiato o diptongo?', 'Separa en sílabas'],
-    plan(stage, lesson) { return shuffle(HD[stage]).map((it) => hdExercise(it, ['help', 'plain', 'syl'][lesson])); },
-    final() { return shuffle(HD.flat()).slice(0, 10).map((it) => hdExercise(it, 'plain')); },
-    finalDesc: '10 palabras de todas las etapas. Atlas tiene 5 huesos para todo el reto.'
+    lessons: ['Con pista', 'Corta la palabra', 'Corta y decide'],
+    lessonDesc: ['Las dos vocales vienen marcadas en color', 'Toca entre las letras para separar las sílabas', 'Corta la palabra y di si es hiato o diptongo'],
+    chip: ['¿Hiato o diptongo?', 'Separa en sílabas', 'Separa y decide'],
+    plan(stage, lesson) { const items = shuffle(HD[stage]); return lesson === 0 ? items.map(hdHelp) : items.map((it) => hdSplit(it, lesson === 2)); },
+    final() { const all = HD.flat(); return [hdSort(shuffle(all.filter((x) => x[4] === 'D')).slice(0, 5).concat(shuffle(all.filter((x) => x[4] === 'H')).slice(0, 5)))]; },
+    finalDesc: 'Clasifica 10 palabras en dos cestas: Diptongo e Hiato. Atlas tiene 5 huesos para todo el reto.'
   };
 
   window.LEVELS = { en: [COMPARE], es: [HIATO], ca: [] };
