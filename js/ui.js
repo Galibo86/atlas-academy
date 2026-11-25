@@ -821,6 +821,8 @@
     if (G.isBonus) { G.rows.forEach((w, r) => w.forEach((c, i) => { G.typed[r * CFG.bonusBoxes + i] = c; })); return check(); }
     G.typed = G.letters.slice(); check();
   }
+  // typing #dev / #nino on an open tab does not reload the page by itself: reload so the mode applies
+  window.addEventListener('hashchange', () => { if (/^#(dev|nino)$/.test(location.hash) || (!location.hash && (DEV || KID))) location.reload(); });
   if (DEV) {
     const b = document.createElement('button'); b.className = 'devbtn'; b.textContent = 'PRUEBA'; b.setAttribute('aria-label', 'Modo prueba');
     b.onclick = devPanel; document.body.appendChild(b);
