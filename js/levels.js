@@ -23,7 +23,7 @@
      ['sad', 'sadder', 'saddest', 'The rainy day is ___ than the sunny day.', 'That was the ___ film.'],
      ['thin', 'thinner', 'thinnest', 'A pencil is ___ than a book.', 'This is the ___ book on the shelf.'],
      ['wet', 'wetter', 'wettest', 'My boots are ___ than my coat.', 'Atlas is the ___ dog in the park.']],
-    [['happy', 'happier', 'happiest', 'Atlas is ___ than the cat.', 'Feli is the ___ boy in the class.'],
+    [['happy', 'happier', 'happiest', 'Atlas is ___ than the cat.', 'Feli is the ___ kid in the class.'],
      ['funny', 'funnier', 'funniest', 'The clown is ___ than the teacher.', 'This is the ___ joke.'],
      ['easy', 'easier', 'easiest', 'This game is ___ than that one.', 'This is the ___ game.'],
      ['heavy', 'heavier', 'heaviest', 'An elephant is ___ than a horse.', 'The elephant is the ___ animal.'],

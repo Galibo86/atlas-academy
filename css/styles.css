@@ -218,3 +218,15 @@ h1{margin:0}
 .bin .bt{font:800 30px/1 'Baloo 2',sans-serif;color:var(--blue-d);text-align:center}
 .bin .bw{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}.bin .sw{font-size:26px}
 .tool.sort .check{height:66px;min-width:200px;font-size:28px}.bin{min-height:230px}
+
+/* players */
+.whopill{position:absolute;left:96px;top:640px;background:#fff;box-shadow:var(--card)}
+.who .cards{flex-wrap:wrap;justify-content:center;gap:28px;max-width:1140px}
+.pwrap{position:relative}.pcard{width:240px;align-items:center;text-align:center}
+.pav{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font:800 52px/1 'Baloo 2',sans-serif}
+.pav.plus{background:#E7EDF8;color:var(--blue);font-size:64px}.padd{border:3px dashed #B3C1D8;box-shadow:none;background:transparent}
+.pdel{position:absolute;right:-10px;top:-10px;width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:var(--card);color:#8FA3C7;font:800 26px/1 Nunito,sans-serif}
+.askname .namerow{display:flex;gap:20px;align-items:center;margin-top:26px}
+.askname input{width:460px;height:92px;border-radius:24px;border:3px solid var(--blue);padding:0 28px;font:800 48px/1 'Baloo 2',sans-serif;color:var(--ink);background:#fff;outline:none}
+.askname .bigbtn[disabled]{opacity:.45}.sub.small{font-size:20px;color:#B4232A;min-height:24px}
+.askdog{position:absolute;right:70px;bottom:40px;width:300px;pointer-events:none}

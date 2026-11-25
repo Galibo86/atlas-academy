@@ -2,7 +2,33 @@
 window.LEARN = (function () {
   const C = window.CONTENT;
   const CFG = C.config;
-  const KEY = 'atlas-academy-v1';
+  // Each player has their own saved progress on this tablet. No email, no server.
+  const OLDKEY = 'atlas-academy-v1', PKEY = 'atlas-academy-players';
+  let KEY = OLDKEY, players = null;
+  const keyFor = (id) => OLDKEY + ':' + id;
+  function savePlayers() { try { localStorage.setItem(PKEY, JSON.stringify(players)); } catch (e) {} }
+  function loadPlayers() {
+    try { players = JSON.parse(localStorage.getItem(PKEY)); } catch (e) { players = null; }
+    if (!players || !Array.isArray(players.list)) {
+      players = { active: null, list: [] };
+      let old = null; try { old = localStorage.getItem(OLDKEY); } catch (e) {}
+      if (old) {                                   // progress from before players existed belongs to Feli
+        players.list.push({ id: 'p1', name: 'Feli' }); players.active = 'p1';
+        try { localStorage.setItem(keyFor('p1'), old); } catch (e) {}
+      }
+      savePlayers();
+    }
+    if (players.active && !players.list.some((x) => x.id === players.active)) players.active = null;
+    KEY = players.active ? keyFor(players.active) : OLDKEY + ':none';
+    return players;
+  }
+  function usePlayer(id) { players.active = id; savePlayers(); KEY = keyFor(id); load(); }
+  function addPlayer(name) { const id = 'p' + Date.now().toString(36); players.list.push({ id, name }); usePlayer(id); return id; }
+  function removePlayer(id) {
+    players.list = players.list.filter((x) => x.id !== id); try { localStorage.removeItem(keyFor(id)); } catch (e) {}
+    if (players.active === id) players.active = null; savePlayers(); loadPlayers(); load();
+  }
+  const player = () => (players && players.list.find((x) => x.id === players.active)) || null;
   const LANGS = ['en', 'es', 'ca'];
 
   // ---------- storage ----------
@@ -140,6 +166,7 @@ window.LEARN = (function () {
   }
   function abandonFinal(lang) { L(lang).current = null; save(); }
 
-  return { load, save, resetAll, L, word, stageNums, mastered, startCurrent, record, finishSession, abandonFinal, LANGS,
+  return { loadPlayers, usePlayer, addPlayer, removePlayer, player, get players() { return players; },
+    load, save, resetAll, L, word, stageNums, mastered, startCurrent, record, finishSession, abandonFinal, LANGS,
     get db() { return db; } };
 })();

@@ -16,7 +16,11 @@
   // keep short endings together: no lonely "…" or last word on its own line
   const tidy = (s) => String(s).replace(/ (…|»|”|\?|!)/g, '\u00A0$1').replace(/ (\S{1,8})$/, '\u00A0$1');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const T = (lang) => C.ui[lang];
+  // the player's name replaces "Feli" in every text
+  const NAME = () => (LE.player() ? LE.player().name : '');
+  const swapName = (v) => (typeof v === 'string' ? v.replace(/Feli/g, NAME()).replace(/, !/g, '!').replace(/ !/g, '!')
+    : typeof v === 'function' ? (...a) => swapName(v(...a)) : Array.isArray(v) ? v.map(swapName) : v);
+  const T = (lang) => new Proxy(C.ui[lang], { get: (o, k) => swapName(o[k]) });
 
   function fit() {
     const s = Math.min(window.innerWidth / 1280, window.innerHeight / 800);
@@ -41,8 +45,51 @@
         <h1>Atlas<br><span>Academy</span></h1><p>Learn to spell your numbers in English, Català and Español — with Atlas by your side.</p>
         <button class="bigbtn orange" id="play">Let’s play!</button></div>
       <img class="whero" src="${IMG.sitting}" alt="Atlas, a black and white border collie" draggable="false">
-      <div class="wbubble">Hi Feli! Ready?</div></section>`;
-    $('play').onclick = () => (LE.db.lastLang ? levels(LE.db.lastLang) : language());
+      <div class="wbubble">${LE.player() ? `Hi ${esc(NAME())}! Ready?` : 'Hi! Ready?'}</div>
+      ${LE.players.list.length ? `<button class="pill whopill" id="who">${LE.player() ? `Not ${esc(NAME())}? ` : ''}Change player</button>` : ''}</section>`;
+    $('play').onclick = () => (!LE.players.list.length ? askName(true) : !LE.player() || LE.players.list.length > 1 ? who() : start());   // several players: always ask who is playing
+    if ($('who')) $('who').onclick = who;
+  }
+  const start = () => { LE.db.lastLang ? levels(LE.db.lastLang) : language(); };
+
+  // ---------- 1b · who is playing / what's your name ----------
+  const PCOL = ['#2F6FED', '#22A86B', '#FF9F1C', '#E5484D', '#8B5CF6', '#0EA5B7'];
+  function who() {
+    document.documentElement.lang = 'en';
+    const list = LE.players.list;
+    view.innerHTML = `<section class="screen lang who">
+      <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>Who is playing?</h1></div>
+      <div class="cards">${list.map((x, i) => `<div class="pwrap"><button class="lcard pcard" data-id="${x.id}"><span class="pav" style="background:${PCOL[i % PCOL.length]}">${esc(x.name.slice(0, 1).toUpperCase())}</span><span class="lname">${esc(x.name)}</span></button>
+</div>`).join('')}
+        ${list.length < 6 ? `<button class="lcard pcard padd" id="add"><span class="pav plus">+</span><span class="lname">New player</span></button>` : ''}</div></section>`;
+    $('back').onclick = welcome;
+    // tap = play; hold 1.5 s = delete (hidden on purpose so a child can't wipe a profile by accident)
+    view.querySelectorAll('.pcard[data-id]').forEach((b) => { let t = null, held = false;
+      b.addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { held = true; askDel(b.dataset.id); }, 1500); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, () => clearTimeout(t)));
+      b.onclick = () => { if (held) return; LE.usePlayer(b.dataset.id); start(); }; });
+    const askDel = (id) => { const x = list.find((p) => p.id === id);
+      overlay({ title: `Delete ${x.name}?`, sub: `All of ${x.name}’s progress on this tablet will be deleted.`, primary: 'Keep', secondary: 'Delete',
+        onPrimary: () => {}, onSecondary: () => { LE.removePlayer(x.id); LE.players.list.length ? who() : welcome(); } }); };
+    if ($('add')) $('add').onclick = () => askName(false);
+  }
+  function askName(first) {
+    document.documentElement.lang = 'en';
+    view.innerHTML = `<section class="screen lang askname">
+      <div class="head">${first ? '' : `<button class="back" id="back" aria-label="Back">${BACK}</button>`}<h1>What’s your name?</h1></div>
+      <p class="sub">Atlas wants to know who he’s playing with.</p>
+      <div class="namerow"><input id="pname" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Your name" aria-label="Your name">
+        <button class="bigbtn green" id="ok" disabled>Let’s go!</button></div>
+      <p class="sub small" id="nmsg"></p>
+      <img class="askdog" src="${IMG.curious}" alt="" draggable="false"></section>`;
+    if ($('back')) $('back').onclick = who;
+    const inp = $('pname'), ok = $('ok');
+    const clean = () => inp.value.trim().replace(/\s+/g, ' ');
+    const taken = (n) => LE.players.list.some((x) => x.name.toLowerCase() === n.toLowerCase());
+    inp.oninput = () => { const n = clean(); ok.disabled = !n || taken(n); $('nmsg').textContent = n && taken(n) ? 'That name is already here — tap it on the list.' : ''; };
+    const go = () => { const n = clean(); if (!n || taken(n)) return; LE.addPlayer(n.charAt(0).toUpperCase() + n.slice(1)); inp.blur(); start(); };
+    ok.onclick = go; inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    setTimeout(() => inp.focus(), 50);
   }
 
   // ---------- 2 · language ----------
@@ -64,7 +111,7 @@
       <img class="corner" src="${IMG.curious}" alt="Atlas lying down, curious" draggable="false"></section>`;
     $('back').onclick = welcome;
     view.querySelectorAll('.lcard').forEach((b) => (b.onclick = () => { LE.db.lastLang = b.dataset.l; LE.save(); levels(b.dataset.l); }));
-    $('reset').onclick = () => overlay({ title: 'Reset all progress?', sub: 'This deletes the progress of the three languages on this tablet.', primary: 'Keep progress', secondary: 'Delete progress',
+    $('reset').onclick = () => overlay({ title: 'Reset all progress?', sub: `This deletes ${NAME() || 'the'}${NAME() ? '’s' : ''} progress in the three languages.`, primary: 'Keep progress', secondary: 'Delete progress',
       onPrimary: () => {}, onSecondary: () => { LE.resetAll(); language(); } });
   }
 
@@ -531,7 +578,7 @@
     $('progress').innerHTML = cur.final && ex.kind === 'sort' ? `${esc(LX[G.lang].finalTitle)} · <b>${ex.words.filter((x) => G.place[x.w]).length} / ${ex.words.length}</b>`
       : cur.final ? `${esc(LX[G.lang].finalTitle)} · <b>${cur.idx + 1} / ${cur.plan.length}</b>` : `${esc(t.stage)} ${cur.stage + 1} · <b>${esc(t.paw)} ${cur.idx + 1}</b>`;
     $('chip').textContent = ex.chip || lv.chip[cur.lesson] || ''; $('chip').classList.remove('new');
-    const q = $('question'); q.className = 'question topic'; q.innerHTML = ex.prompt;
+    const q = $('question'); q.className = 'question topic'; q.innerHTML = ex.prompt.replace(/Feli/g, esc(NAME()));
     const write = ex.kind === 'write', split = ex.kind === 'split', sort = ex.kind === 'sort';
     const showChoices = ex.kind === 'choice' || (split && G.splitDone && ex.decide);
     document.querySelector('.game .row').hidden = !write; $('keyboard').hidden = !write; $('choices').hidden = !showChoices; $('bonus').hidden = true;
@@ -735,6 +782,6 @@
   // ---------- boot ----------
   document.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('resize', fit);
-  LE.load(); fit(); welcome();
+  LE.loadPlayers(); LE.load(); fit(); welcome();
   window.__atlas = { get G() { return G; }, map, language, welcome, game, levels, tmap, tgame, LE };   // used by automated tests
 })();
