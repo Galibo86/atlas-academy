@@ -517,8 +517,9 @@
   function tLoad() {
     const ex = G.cur.plan[G.cur.idx], fin = G.cur.final;
     const letters = ex.kind === 'write' ? Array.from(ex.answer) : [];
-    const max = fin ? CFG.finalBones : ex.kind === 'write' ? CFG.livesFor(letters.filter((c) => c !== ' ').length) : 3;
-    Object.assign(G, { ex, letters, max, lives: fin ? G.cur.bonesLeft : max, typed: letters.map((c) => (c === ' ' ? ' ' : null)), locked: letters.map((c) => c === ' '),
+    const fixed = (c) => c === ' ' || c === '|';                 // spaces and row breaks are not typed
+    const max = fin ? CFG.finalBones : ex.kind === 'write' ? CFG.livesFor(letters.filter((c) => !fixed(c)).length) : 3;
+    Object.assign(G, { ex, letters, max, lives: fin ? G.cur.bonesLeft : max, typed: letters.map((c) => (fixed(c) ? c : null)), locked: letters.map(fixed),
       bad: [], wrongOpts: [], resets: 0, failed: false, hinted: false, ghost: false, cursor: null, done: false, phase: 'play', isBonus: false });
     $('keyboard').innerHTML = ''; if (ex.kind === 'write') buildKeyboard();
     render();
@@ -532,9 +533,10 @@
     document.querySelector('.game .row').hidden = !write; $('keyboard').hidden = !write; $('choices').hidden = write; $('bonus').hidden = true;
     let full = false;
     if (write) {
-      const n = G.letters.length, size = n <= 7 ? [76, 10, 52] : n <= 10 ? [60, 7, 42] : [50, 5, 36];
-      const slots = $('slots'); slots.style.gap = size[1] + 'px';
-      slots.innerHTML = G.letters.map((c, i) => { if (c === ' ') return `<div class="slot gap" style="width:${Math.round(size[0] / 2)}px"></div>`;
+      const rows = G.letters.join('').split('|'), n = Math.max(...rows.map((r) => r.length)), size = rows.length > 1 ? [42, 4, 32] : n <= 7 ? [76, 10, 52] : n <= 10 ? [60, 7, 42] : [50, 5, 36];
+      const slots = $('slots'); slots.style.gap = size[1] + 'px'; slots.classList.toggle('two', rows.length > 1);
+      let row = 1; const tag = () => (rows.length > 1 ? `<span class="gapn">${row}</span>` : '');
+      slots.innerHTML = tag() + G.letters.map((c, i) => { if (c === '|') { row++; return `<div class="brk"></div>${tag()}`; } if (c === ' ') return `<div class="slot gap" style="width:${Math.round(size[0] / 2)}px"></div>`;
         const has = G.typed[i] != null;
         const cls = 'slot' + (G.locked[i] ? ' ok' : G.bad.includes(i) ? ' bad' : has ? ' filled' : '') + (G.cursor === i && !has ? ' target' : '');
         return `<div class="${cls}" data-i="${i}" style="width:${size[0]}px;font-size:${size[2]}px">${esc(has ? G.typed[i] : '')}</div>`; }).join('');
@@ -578,7 +580,7 @@
   function tOut() {
     const t = G.t;
     if (G.cur.final) return overlay({ side: true, title: t.finalOutTitle, sub: t.finalOutSub, primary: t.finalRetry, onPrimary: () => tgame(G.lang, G.id, true) });
-    overlay({ side: true, title: t.resetTitle, sub: `${LX[G.lang].rightAnswer}: ${G.ex.answer}`, primary: t.tryAgain, onPrimary: () => {
+    overlay({ side: true, title: t.resetTitle, sub: `${LX[G.lang].rightAnswer}: ${G.ex.answer.replace('|', ' … ')}`, primary: t.tryAgain, onPrimary: () => {
       G.resets += 1; G.typed = G.letters.map((c) => (c === ' ' ? ' ' : null)); G.locked = G.letters.map((c) => c === ' ');
       G.wrongOpts = []; G.lives = G.max; G.phase = 'play'; render(); } });
   }

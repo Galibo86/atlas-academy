@@ -29,6 +29,29 @@
      ['heavy', 'heavier', 'heaviest', 'An elephant is ___ than a horse.', 'The elephant is the ___ animal.'],
      ['tiny', 'tinier', 'tiniest', 'An ant is ___ than a bee.', 'The ant is the ___ animal.']]
   ];
+  // final stage: comparative + superlative of the same adjective in one sentence
+  const DOUBLE = [
+    ['tall', 'A horse is ___ than a dog, but the giraffe is the ___ of all.'],
+    ['small', 'A cat is ___ than a dog, but the mouse is the ___ of all.'],
+    ['fast', 'Atlas is ___ than the cat, but the cheetah is the ___ animal.'],
+    ['long', 'A snake is ___ than a worm, but the train is the ___ of all.'],
+    ['old', 'Dad is ___ than me, but Grandpa is the ___ in my family.'],
+    ['large', 'A shark is ___ than a fish, but the whale is the ___ animal in the sea.'],
+    ['nice', 'This cake is ___ than that one, but Grandma\'s cake is the ___ of all.'],
+    ['safe', 'The park is ___ than the road, but home is the ___ place.'],
+    ['wide', 'The street is ___ than the path, but the river is the ___ of all.'],
+    ['cute', 'The kitten is ___ than the cat, but Atlas is the ___ dog in the world.'],
+    ['big', 'A dog is ___ than a cat, but the elephant is the ___ animal in the zoo.'],
+    ['hot', 'Spring is ___ than winter, but August is the ___ month.'],
+    ['sad', 'This film is ___ than that one, but the last film is the ___ of all.'],
+    ['thin', 'A pencil is ___ than a book, but a hair is the ___ of all.'],
+    ['wet', 'My coat is ___ than my hat, but my boots are the ___ of all.'],
+    ['happy', 'The cat is ___ than the fish, but Atlas is the ___ dog in the park.'],
+    ['funny', 'Dad is ___ than Mum, but the clown is the ___ of all.'],
+    ['easy', 'Maths is ___ than English today, but art is the ___ lesson.'],
+    ['heavy', 'A horse is ___ than a dog, but the elephant is the ___ animal.'],
+    ['tiny', 'A bee is ___ than a bird, but the ant is the ___ of all.']
+  ];
   const RULES = ['tall → taller', 'nice → nicer', 'big → bigger', 'happy → happier'];
   function wrongForm(stage, a, sup) {        // a believable spelling mistake for each rule
     if (stage === 0) return (sup ? 'most ' : 'more ') + a;
@@ -63,8 +86,12 @@
       if (lesson === 2) return items.map((it) => cmpExercise(stage, it, Math.random() < 0.5, 'write'));
       return items.map((it) => cmpExercise(stage, it, Math.random() < 0.5, 'write2'));
     },
-    final() { return shuffle(ADJ.flat()).slice(0, 10).map((it) => { const ex = cmpExercise(ADJ.findIndex((st) => st.includes(it)), it, Math.random() < 0.5, 'write'); ex.chip = 'Write the word'; return ex; }); },
-    finalDesc: '10 sentences from all the stages. Atlas has 5 bones for the whole challenge.'
+    // Final stage: one sentence with both forms, he writes "… than" and "the …" (two rows of boxes)
+    final() { return shuffle(DOUBLE).slice(0, 10).map(([a, s]) => { const [, c, su] = ADJ.flat().find((x) => x[0] === a);
+      let k = 0; const html = esc(s).replace(/___ than|the ___/g, () => `<span class="nw"><span class="gapn">${++k}</span>${GAP} ${GAP}</span>`);
+      return { kind: 'write', id: a, prompt: `<div class="tsent">${html}</div><div class="tadj">(${esc(a)})</div>`, answer: `${c} than|the ${su}`,
+        explain: `${a} → ${c} → the ${su}`, chip: 'Write both' }; }); },
+    finalDesc: '10 sentences with both forms: “… than” and “the …”. Atlas has 5 bones for the whole challenge.'
   };
 
   // ---------------- Castellano · hiato o diptongo ----------------
