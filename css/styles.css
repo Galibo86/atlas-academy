@@ -243,3 +243,26 @@ h1{margin:0}
 .dcode span{flex:1;font-weight:800}.dvpin{width:120px;height:40px;border-radius:10px;border:2px solid #D4DCEB;padding:0 10px;font:800 20px/1 Nunito,sans-serif;letter-spacing:4px}
 .dvpin.err{border-color:var(--red)}
 .devcard{max-height:760px;overflow-y:auto}
+
+/* Atlas with a hat */
+.hatdog{position:relative;display:inline-block;pointer-events:none}
+.hatdog .hd-dog{display:block;height:100%;width:auto}
+.hatdog .hd-hat{position:absolute;height:auto;pointer-events:none}
+.hatdog.whero{position:absolute;right:170px;bottom:70px;height:600px}
+.hatdog.hero{position:absolute;right:70px;bottom:40px;height:470px}.ldone .hatdog.hero{height:520px;right:80px}
+.pcard .hatdog.pdog{height:150px;margin-top:4px}
+/* wardrobe */
+.wardbtn{position:absolute;left:80px;bottom:44px;display:inline-flex;gap:10px;align-items:center;background:#fff;box-shadow:var(--card);color:var(--ink);font-size:20px;padding:12px 22px}
+.wardrobe .hatdog.wdog{position:absolute;left:110px;top:200px;height:540px}
+.wardrobe .hgrid{position:absolute;left:520px;top:180px;width:700px;display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.hslot{position:relative;height:200px;border-radius:24px;background:#fff;border:3px solid var(--line);box-shadow:0 6px 0 #C2CFE6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px}
+.hslot img{max-width:100px;max-height:90px}.hslot.on{border-color:var(--blue);background:#EEF3FF;box-shadow:0 6px 0 #A9C1F5}
+.hslot.lock{box-shadow:none;background:#F3F5FA}.hslot.lock img{filter:grayscale(1) brightness(1.15);opacity:.35}
+.hslot .lk{position:absolute;top:10px;right:12px;font-size:20px}.hslot small{font:700 13px/1.2 Nunito,sans-serif;color:var(--muted);text-align:center}
+.hslot .q{font:800 60px/1 'Baloo 2',sans-serif;color:#C8D3E6}
+.wardrobe .nohat{position:absolute;left:520px;top:640px;background:#fff;box-shadow:var(--card);font-size:20px;padding:12px 22px}.wardrobe .nohat.on{outline:3px solid var(--blue)}
+/* new hat card */
+.hatnew .card{width:460px;align-items:center;text-align:center}
+.hatshow{display:flex;flex-direction:column;align-items:center;gap:8px;margin:6px 0 4px}.hatshow img{height:150px;animation:hatin .9s cubic-bezier(.2,1.4,.4,1) both}
+.hatshow b{font:800 26px/1 'Baloo 2',sans-serif}
+@keyframes hatin{0%{transform:scale(.2) rotate(-200deg);opacity:0}100%{transform:none;opacity:1}}

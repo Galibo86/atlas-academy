@@ -1,6 +1,6 @@
 // Atlas Academy — screens and game interaction
 (function () {
-  const C = window.CONTENT, CFG = C.config, LE = window.LEARN;
+  const C = window.CONTENT, CFG = C.config, LE = window.LEARN, HT = window.HATS;
   const $ = (id) => document.getElementById(id);
   const stage = $('stage'), view = $('view');
   const IMG = { happy: 'assets/atlas-happy.png', curious: 'assets/atlas-curious.png', worried: 'assets/atlas-worried.png', sad: 'assets/atlas-sad.png',
@@ -12,6 +12,7 @@
   const ALPHA = 'abcdefghijklmnopqrstuvwxyz'.split('');
   const BONE = (cls) => `<svg class="${cls || ''}" viewBox="-1 -1 26 18" aria-hidden="true"><path d="M5 2a3 3 0 0 1 3 2.5h8A3 3 0 1 1 19 9a3 3 0 1 1-3 2.5H8A3 3 0 1 1 5 9a3 3 0 1 1 0-7z" fill="#FF9F1C" stroke="#D97A00" stroke-width="1"/></svg>`;
   const PAW = (c) => `<svg viewBox="0 0 22 22" aria-hidden="true"><g fill="${c}"><ellipse cx="11" cy="14.5" rx="5.6" ry="5"/><circle cx="4.3" cy="8.3" r="2.5"/><circle cx="8.8" cy="4.2" r="2.5"/><circle cx="13.2" cy="4.2" r="2.5"/><circle cx="17.7" cy="8.3" r="2.5"/></g></svg>`;
+  const HANGER = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7a2 2 0 1 1 2-2c0 1-2 1.5-2 3l9 6.5a1.4 1.4 0 0 1-.8 2.5H3.8a1.4 1.4 0 0 1-.8-2.5L12 8"/></svg>';
   const BACK = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1B2A4A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
   // keep short endings together: no lonely "…" or last word on its own line
   const tidy = (s) => String(s).replace(/ (…|»|”|\?|!)/g, '\u00A0$1').replace(/ (\S{1,8})$/, '\u00A0$1');
@@ -25,6 +26,58 @@
   function fit() {
     const s = Math.min(window.innerWidth / 1280, window.innerHeight / 800);
     stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+  }
+
+  // ---------- hats ----------
+  const HX = {
+    en: { wardrobe: 'Atlas’s wardrobe', newHat: 'New hat!', earned: 'You finished a stage — this is for Atlas.', wearIt: 'Put it on Atlas', later: 'Later', great: 'Great!',
+      christmas: 'Merry Christmas! A present for Atlas.', reyes: 'The Three Kings brought Atlas a present!', none: 'No hat', locked: 'Finish a stage to win it', dec: 'Comes in December', jan: 'Comes on 6 January',
+      count: (a, b) => `${a} of ${b} hats`, open: 'Wardrobe' },
+    es: { wardrobe: 'El armario de Atlas', newHat: '¡Nuevo gorro!', earned: 'Has terminado una etapa: esto es para Atlas.', wearIt: 'Pónselo a Atlas', later: 'Luego', great: '¡Genial!',
+      christmas: '¡Feliz Navidad! Un regalo para Atlas.', reyes: '¡Los Reyes le han traído un regalo a Atlas!', none: 'Sin gorro', locked: 'Termina una etapa para ganarlo', dec: 'Llega en diciembre', jan: 'Llega el 6 de enero',
+      count: (a, b) => `${a} de ${b} gorros`, open: 'Armario' },
+    ca: { wardrobe: 'L’armari de l’Atlas', newHat: 'Barret nou!', earned: 'Has acabat una etapa: això és per a l’Atlas.', wearIt: 'Posa-li a l’Atlas', later: 'Després', great: 'Genial!',
+      christmas: 'Bon Nadal! Un regal per a l’Atlas.', reyes: 'Els Reis li han portat un regal a l’Atlas!', none: 'Sense barret', locked: 'Acaba una etapa per guanyar-lo', dec: 'Arriba al desembre', jan: 'Arriba el 6 de gener',
+      count: (a, b) => `${a} de ${b} barrets`, open: 'Armari' } };
+  const HL = () => HX[['en', 'es', 'ca'].includes(document.documentElement.lang) ? document.documentElement.lang : 'en'];
+  const worn = () => (LE.player() ? HT.state(LE.db).worn : null);
+  // shows the "New hat!" card for every hat waiting to be shown, one after another
+  function showNewHats(after) {
+    if (!LE.player()) return after && after();
+    const list = HT.takePending(LE.db); LE.save();
+    const next = () => { const id = list.shift(); if (!id) return after && after();
+      const h = HT.get(id), x = HL(), seasonal = !!h.season, on = HT.state(LE.db).worn === id;
+      const el = document.createElement('div'); el.className = 'overlay hatnew';
+      el.innerHTML = `<div class="card" role="dialog" aria-modal="true"><div class="ovtitle">${esc(x.newHat)}</div>
+        <div class="ovsub">${esc(h.season === 'christmas' ? x.christmas : h.season === 'reyes' ? x.reyes : x.earned)}</div>
+        <div class="hatshow"><img class="spin" src="${HT.src(h)}" alt="${esc(h.name[document.documentElement.lang] || h.name.en)}"><b>${esc(h.name[document.documentElement.lang] || h.name.en)}</b></div>
+        <button class="btn primary green" data-a="p">${esc(on ? x.great : x.wearIt)}</button>${on ? '' : `<button class="btn secondary" data-a="s">${esc(x.later)}</button>`}</div>`;
+      el.addEventListener('click', (e) => { const a = e.target.closest('[data-a]'); if (!a) return;
+        if (a.dataset.a === 'p') { HT.wear(LE.db, id); LE.save(); } el.remove(); refreshDogs(); next(); });
+      stage.appendChild(el); };
+    next();
+  }
+  function refreshDogs() { document.querySelectorAll('[data-dog]').forEach((d) => { d.outerHTML = dogHTML(d.dataset.dog); }); }
+  const dogHTML = (cls) => HT.dog(worn(), cls).replace('<div class="hatdog', `<div data-dog="${cls}" class="hatdog`);
+  // a stage was completed: the next hat in the order (shown on the celebration screen)
+  function earnHat() { if (LE.player()) { HT.stageCompleted(LE.db); LE.save(); } }
+
+  function wardrobe(back) {
+    const x = HL(), s = HT.state(LE.db), lang = document.documentElement.lang;
+    const won = HT.ORDER.filter((id) => s.owned.includes(id)).length;
+    const slots = HT.LIST.map((h) => { const has = s.owned.includes(h.id), img = HT.src(h);
+      const hint = h.season === 'christmas' ? x.dec : h.season === 'reyes' ? x.jan : x.locked;
+      return `<button class="hslot${has ? '' : ' lock'}${s.worn === h.id ? ' on' : ''}" data-h="${h.id}" ${has ? '' : 'disabled'} aria-label="${esc(h.name[lang] || h.name.en)}">
+        ${img ? `<img src="${img}" alt="">` : '<span class="q">?</span>'}${has ? '' : `<span class="lk">🔒</span><small>${esc(hint)}</small>`}</button>`; }).join('');
+    view.innerHTML = `<section class="screen lang wardrobe">
+      <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>${esc(x.wardrobe)}</h1></div>
+      <p class="sub">${esc(x.count(won, HT.ORDER.length))}</p>
+      ${dogHTML('wdog')}
+      <div class="hgrid">${slots}</div>
+      <button class="pill nohat${s.worn ? '' : ' on'}" id="nohat">${esc(x.none)}</button></section>`;
+    $('back').onclick = back;
+    view.querySelectorAll('.hslot:not(.lock)').forEach((b) => (b.onclick = () => { HT.wear(LE.db, b.dataset.h); LE.save(); wardrobe(back); }));
+    $('nohat').onclick = () => { HT.wear(LE.db, null); LE.save(); wardrobe(back); };
   }
 
   // ---------- overlay ----------
@@ -44,7 +97,7 @@
       <div class="wtext"><div class="eyebrow">${PAW('#2F6FED')}<span>NUMBERS · 1 TO 20</span></div>
         <h1>Atlas<br><span>Academy</span></h1><p>Learn to spell your numbers in English, Català and Español — with Atlas by your side.</p>
         <button class="bigbtn orange" id="play">Let’s play!</button></div>
-      <img class="whero" src="${IMG.sitting}" alt="Atlas, a black and white border collie" draggable="false">
+      ${LE.player() ? dogHTML('whero') : `<img class="whero" src="${IMG.sitting}" alt="Atlas, a black and white border collie" draggable="false">`}
       <div class="wbubble">${LE.player() ? `Hi ${esc(NAME())}! Ready?` : 'Hi! Ready?'}</div>
       ${LE.players.list.length ? `<button class="pill whopill" id="who">${LE.player() ? `Not ${esc(NAME())}? ` : ''}Change player</button>` : ''}</section>`;
     $('play').onclick = () => (!LE.players.list.length ? askName(true) : !LE.player() || LE.players.list.length > 1 ? who() : enter(LE.player().id));   // several players: always ask who is playing
@@ -73,7 +126,7 @@
     };
     draw(); stage.appendChild(el);
   }
-  const start = () => { LE.db.lastLang ? levels(LE.db.lastLang) : language(); };
+  const start = () => { HT.checkSeason(LE.db); LE.save(); LE.db.lastLang ? levels(LE.db.lastLang) : language(); showNewHats(); };
 
   // ---------- 1b · who is playing / what's your name ----------
   const PCOL = ['#2F6FED', '#22A86B', '#FF9F1C', '#E5484D', '#8B5CF6', '#0EA5B7'];
@@ -82,7 +135,7 @@
     const list = LE.players.list;
     view.innerHTML = `<section class="screen lang who">
       <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>Who is playing?</h1></div>
-      <div class="cards">${list.map((x, i) => `<div class="pwrap"><button class="lcard pcard" data-id="${x.id}"><span class="pav" style="background:${PCOL[i % PCOL.length]}">${esc(x.name.slice(0, 1).toUpperCase())}</span><span class="lname">${esc(x.name)}</span>${x.pin ? '<span class="plock" aria-label="Has a code">🔒</span>' : ''}</button>
+      <div class="cards">${list.map((x, i) => `<div class="pwrap"><button class="lcard pcard" data-id="${x.id}">${HT.dog((LE.peek(x.id).hats || {}).worn, 'pdog')}<span class="lname">${esc(x.name)}</span>${x.pin ? '<span class="plock" aria-label="Has a code">🔒</span>' : ''}</button>
 </div>`).join('')}
         ${list.length < 6 ? `<button class="lcard pcard padd" id="add"><span class="pav plus">+</span><span class="lname">New player</span></button>` : ''}</div></section>`;
     $('back').onclick = welcome;
@@ -444,6 +497,7 @@
       onPrimary: () => { if (!last) loadExercise(); else sessionEnd(LE.finishSession(G.lang)); } }), 900);
   }
   function sessionEnd(res) {
+    if (res.stageCompleted || res.levelCompleted) earnHat();
     if (res.levelCompleted) return levelDone(G.lang, res);
     lessonDone(G.lang, res);
   }
@@ -476,6 +530,7 @@
         <button class="bigbtn orange" id="go">${esc(t.next)}</button></div>
       <img class="hero" src="${IMG.celebrate}" alt="Atlas celebrating" draggable="false"></section>`;
     $('go').onclick = () => map(lang);
+    setTimeout(() => showNewHats(), 1200);
   }
 
   // ---------- 12 · level complete ----------
@@ -490,8 +545,9 @@
         <div class="lbl">${esc(t.canSpell)}</div>
         <div class="grid">${Array.from({ length: 20 }, (_, i) => i + 1).map((n) => `<div class="cell${weak.includes(n) ? ' weak' : ''}"><b>${esc(LE.word(lang, n))}</b><span>${n}</span></div>`).join('')}</div>
         <div class="btns"><button class="bigbtn white" id="prac">${esc(t.practise)}</button><button class="bigbtn orange" id="go">${esc(t.backMap)}</button></div></div>
-      <img class="hero" src="${IMG.sitting}" alt="Atlas sitting proudly" draggable="false"><div class="lbubble">${esc(t.star)}</div></section>`;
+      ${dogHTML('hero')}<div class="lbubble">${esc(t.star)}</div></section>`;
     $('go').onclick = () => map(lang); $('prac').onclick = () => game(lang, 'practice');
+    setTimeout(() => showNewHats(), 1200);
   }
 
   // =====================================================================
@@ -523,8 +579,9 @@
       <p class="sub">${esc(t.langName)}</p>
       <div class="cards">${cards.join('')}</div>
       <p class="sub soon">${esc(x.soon)}</p>
+      <button class="pill wardbtn" id="ward">${HANGER}${esc(HX[lang].open)}</button>
       <img class="corner" src="${IMG.curious}" alt="Atlas lying down, curious" draggable="false"></section>`;
-    $('back').onclick = language;
+    $('back').onclick = language; $('ward').onclick = () => wardrobe(() => levels(lang));
     view.querySelectorAll('.lv').forEach((b) => (b.onclick = () => (b.dataset.id === 'numbers' ? map(lang) : tmap(lang, b.dataset.id))));
   }
 
@@ -729,6 +786,7 @@
     st.current = null;
     if (cur.final) st.finalDone = true;
     else { st.lesson += 1; if (st.lesson >= lv.lessons.length) { st.stage += 1; st.lesson = 0; res.stageCompleted = true; } }
+    if (res.stageCompleted || cur.final) earnHat();
     LE.save(); tEnd(lang, id, res);
   }
   function tEnd(lang, id, res) {
@@ -745,6 +803,7 @@
         ${res.final ? `<div class="tile bossrow"><span class="big gold">★ ${esc(x.star)}</span></div>` : ''}
         <button class="bigbtn ${big ? 'orange' : 'green'}" id="go">${esc(t.backMap)}</button></div></section>`;
     $('go').onclick = () => tmap(lang, id);
+    if (big) setTimeout(() => showNewHats(), 1200);
   }
 
 
@@ -766,6 +825,7 @@
       <label>Lección <select id="dvN"></select></label>
       <div class="devrow"><button id="dvGo" class="dvb main">Ir al mapa</button><button id="dvPlay" class="dvb">Jugar ya</button></div>
       <div class="devrow"><button id="dvSkip" class="dvb">Saltar ejercicio</button><button id="dvReset" class="dvb warn">Borrar progreso</button></div>
+      <div class="devrow"><button id="dvHat" class="dvb">Dar gorro</button><button id="dvXmas" class="dvb">Regalo de temporada</button></div>
       <div class="devrow"><button id="dvSave" class="dvb">Guardar copia</button><button id="dvLoad" class="dvb">Cargar copia</button></div>
       <input type="file" id="dvFile" accept=".json,application/json" hidden>
       <div class="devcodes"><b>Códigos</b>${LE.players.list.map((x) => `<div class="devrow dcode"><span>${esc(x.name)}</span>
@@ -797,6 +857,8 @@
     $('dvReset').onclick = () => { el.remove(); overlay({ title: `Borrar el progreso de ${NAME() || 'este jugador'}?`, sub: 'No se puede deshacer (salvo con una copia).', primary: 'No', secondary: 'Borrar',
       onPrimary: () => {}, onSecondary: () => { LE.resetAll(); welcome(); } }); };
     $('dvClose').onclick = () => el.remove();
+    $('dvHat').onclick = () => { if (!LE.player()) return; el.remove(); earnHat(); showNewHats(); };
+    $('dvXmas').onclick = () => { if (!LE.player()) return; el.remove(); HT.checkSeason(LE.db, new Date(new Date().getFullYear(), 11, 10)); LE.save(); showNewHats(refreshDogs); };
     el.querySelectorAll('.dvpinok').forEach((b) => (b.onclick = () => { const inp = el.querySelector(`.dvpin[data-id="${b.dataset.id}"]`), v = inp.value.trim();
       if (v && !/^\d{4}$/.test(v)) { inp.classList.add('err'); return; }
       inp.classList.remove('err'); LE.setPin(b.dataset.id, v || null); b.textContent = v ? 'Guardado ✓' : 'Quitado ✓'; setTimeout(() => (b.textContent = 'Guardar'), 1500); }));
