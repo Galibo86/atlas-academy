@@ -4,12 +4,17 @@
   const $ = (id) => document.getElementById(id);
   const stage = $('stage'), view = $('view');
   const IMG = { happy: 'assets/atlas-happy.png', curious: 'assets/atlas-curious.png', worried: 'assets/atlas-worried.png', sad: 'assets/atlas-sad.png',
-    verysad: 'assets/atlas-verysad.png', celebrate: 'assets/atlas-celebrate.png', sitting: 'assets/atlas-sitting.png', bone: 'assets/atlas-bone.png' };
+    verysad: 'assets/atlas-verysad.png', celebrate: 'assets/atlas-celebrate.png', sitting: 'assets/atlas-sitting.png', bone: 'assets/atlas-bone.png',
+    restStart: 'assets/atlas-rest-start.jpg', restEnd: 'assets/atlas-rest-end.jpg', celebStart: 'assets/atlas-celebrate-start.jpg', sadStart: 'assets/atlas-sad-start.jpg' };
+  // stills cut from the first/last frame of each clip, so photo <-> video swaps don't jump (value = shown width)
+  const FRAME = { restStart: 340, restEnd: 340, celebStart: 300, sadStart: 340 };
   Object.values(IMG).forEach((s) => { const i = new Image(); i.src = s; });
   const ALPHA = 'abcdefghijklmnopqrstuvwxyz'.split('');
   const BONE = (cls) => `<svg class="${cls || ''}" viewBox="-1 -1 26 18" aria-hidden="true"><path d="M5 2a3 3 0 0 1 3 2.5h8A3 3 0 1 1 19 9a3 3 0 1 1-3 2.5H8A3 3 0 1 1 5 9a3 3 0 1 1 0-7z" fill="#FF9F1C" stroke="#D97A00" stroke-width="1"/></svg>`;
   const PAW = (c) => `<svg viewBox="0 0 22 22" aria-hidden="true"><g fill="${c}"><ellipse cx="11" cy="14.5" rx="5.6" ry="5"/><circle cx="4.3" cy="8.3" r="2.5"/><circle cx="8.8" cy="4.2" r="2.5"/><circle cx="13.2" cy="4.2" r="2.5"/><circle cx="17.7" cy="8.3" r="2.5"/></g></svg>`;
   const BACK = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1B2A4A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+  // keep short endings together: no lonely "…" or last word on its own line
+  const tidy = (s) => String(s).replace(/ (…|»|”|\?|!)/g, '\u00A0$1').replace(/ (\S{1,8})$/, '\u00A0$1');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const T = (lang) => C.ui[lang];
 
@@ -94,7 +99,7 @@
     // current lesson card
     let card = '';
     if (curIdx < 0) {
-      card = `<div class="lcardmap" id="mcard" style="left:200px;top:334px"><button class="mclose" aria-label="Close">×</button><div class="eb">★ ${esc(t.starDone)}</div><div class="tt">${esc(t.practise)}</div><div class="ds">${esc(t.reviewDesc)}</div>
+      card = `<div class="lcardmap" id="mcard" style="left:200px;top:334px"><button class="mclose" aria-label="Close">×</button><div class="eb">★ ${esc(t.starDone)}</div><div class="tt">${esc(t.practise)}</div><div class="ds">${esc(tidy(t.reviewDesc))}</div>
         <button class="bigbtn blue sm" data-practice="1">${esc(t.practise)}</button></div>`;
     } else {
       const p = MAP_PTS[curIdx]; const isFinal = curIdx === 16; const isRev = !isFinal && st.lesson >= 4;
@@ -103,7 +108,7 @@
       const left = Math.max(200, Math.min(1010, p.x - 115)); const top = 334;
       const eyebrow = isFinal ? t.finalSub : `${t.stage} ${st.stagesDone + 1}${isRev ? '' : ` · ${st.lesson + 1}/4`}`;
       const resume = st.current && st.current.idx > 0 ? `<div class="rs">${esc(t.paw)} ${st.current.idx + 1} / ${st.current.plan.length}</div>` : '';
-      card = `<div class="lcardmap" id="mcard" style="left:${left}px;top:${top}px"><button class="mclose" aria-label="Close">×</button><div class="eb">${esc(eyebrow)}</div><div class="tt">${esc(title)}</div><div class="ds">${esc(desc)}</div>${resume}
+      card = `<div class="lcardmap" id="mcard" style="left:${left}px;top:${top}px"><button class="mclose" aria-label="Close">×</button><div class="eb">${esc(eyebrow)}</div><div class="tt">${esc(title)}</div><div class="ds">${esc(tidy(desc))}</div>${resume}
         <button class="bigbtn blue sm" data-go="1">${esc(t.start)}</button></div>`;
     }
     view.innerHTML = `<section class="screen map">
@@ -220,44 +225,45 @@
     else if (ex.type === 'A') { mood = 'sitting'; say = t.intro; }
     setAtlas(mood, say, warn);
   }
-  // Animated clips (from the Gemini video). Each clip plays once; the calm one then fades into the resting photo.
-  const VID = { happy: { src: 'assets/video/atlas-rest.mp4', w: 340, ratio: 400 / 540, then: 'happy', still: 'happy' },
-    celebrate: { src: 'assets/video/atlas-celebrate.mp4', w: 300, ratio: 520 / 490 * 0.82, still: 'celebrate' },
-    verysad: { src: 'assets/video/atlas-sad.mp4', w: 340, ratio: 400 / 494, still: 'verysad' } };
-  // warm the browser cache so clips start instantly later
+  // Animated clips (from the Gemini video). Each clip plays once and stays on its last frame.
+  // Before it starts we show its own first frame, so there is no jump between photo and video.
+  // The calm clip plays only once per session (not on every word), then Atlas keeps resting.
+  const VID = { happy: { src: 'assets/video/atlas-rest.mp4', w: 340, still: 'restStart', end: 'restEnd', perSession: true },
+    celebrate: { src: 'assets/video/atlas-celebrate.mp4', w: 300, still: 'celebStart' },
+    verysad: { src: 'assets/video/atlas-sad.mp4', w: 340, still: 'sadStart' } };
+  const ATLAS_H = 290;                         // bubble and bones stay at a fixed height: no jumping around
   Object.values(VID).forEach((v) => { try { fetch(v.src).catch(() => {}); } catch (e) {} });
-  function showImage(mood, fade) {
-    const img = $('atlasImg'), vid = $('atlasVid');
-    if (!img.src.endsWith(IMG[mood])) img.src = IMG[mood];
-    img.className = mood === 'celebrate' ? 'celebrate' : mood === 'sitting' ? 'sitting' : '';
-    img.hidden = false;
-    if (fade) { img.style.opacity = 0; requestAnimationFrame(() => { img.style.opacity = 1; vid.style.opacity = 0; }); setTimeout(() => { vid.hidden = true; vid.pause(); }, 550); }
-    else { img.style.opacity = 1; vid.hidden = true; vid.pause(); }
-    return img.offsetHeight || 280;
+  let atlasGen = 0;                            // every change bumps this; old timers check it and do nothing
+  function showImage(key) {
+    const img = $('atlasImg'), vid = $('atlasVid'); atlasGen++;
+    if (!img.src.endsWith(IMG[key])) img.src = IMG[key];
+    img.className = FRAME[key] ? 'vframe' : key === 'celebrate' ? 'celebrate' : key === 'sitting' ? 'sitting' : '';
+    img.style.width = FRAME[key] ? FRAME[key] + 'px' : '';
+    img.hidden = false; img.style.opacity = 1; vid.hidden = true; vid.pause();
   }
-  // The still photo stays on screen until the clip is really playing, so Atlas never disappears
-  // (slow network, autoplay blocked by battery saver, decode error…).
   function setAtlas(mood, say, warn) {
     const img = $('atlasImg'), vid = $('atlasVid');
     const b = $('bubble'); b.textContent = say; b.classList.toggle('warn', !!warn);
+    $('lives').style.bottom = ATLAS_H + 40 + 'px'; b.style.bottom = ATLAS_H + 40 + 64 + 'px';
     const v = VID[mood];
-    const key = mood + ':' + G.ex.n + ':' + G.cur.idx + ':' + G.resets;
-    const place = (h) => { $('lives').style.bottom = h + 40 + 'px'; b.style.bottom = h + 40 + 64 + 'px'; };
-    if (v && G.clipKey === key) return;                       // this clip is already running or finished: leave it alone
-    if (v && G.clipDone !== key) {
+    const key = v && v.perSession ? mood : mood + ':' + G.ex.n + ':' + G.cur.idx + ':' + G.resets;
+    if (v && G.clipKey === key) return;                       // this clip is running or resting on its last frame
+    const done = (G.clipsDone = G.clipsDone || new Set());
+    if (G.clipKey && G.clipKey !== key && VID[G.clipKey] && VID[G.clipKey].perSession) done.add(G.clipKey);   // calm clip interrupted: don't replay it this session
+    if (v && !done.has(key)) {
+      showImage(v.still); const gen = atlasGen;               // its first frame, until the video really plays
       G.clipKey = key;
-      place(showImage(v.still || mood, false));                // photo first
-      vid.hidden = false; vid.style.opacity = 0; vid.style.width = v.w + 'px'; vid.loop = false; vid.src = v.src;
-      let started = false;
-      vid.onplaying = () => { if (G.clipKey !== key) return; started = true; vid.style.opacity = 1; img.style.opacity = 0; setTimeout(() => { if (G.clipKey === key && started) img.hidden = true; }, 500); place(Math.round(v.w * v.ratio)); };
-      vid.onended = () => { if (G.clipKey !== key) return; G.clipDone = key; if (v.then) { G.clipKey = null; place(showImage(v.then, true)); } };
-      vid.onerror = () => { if (G.clipKey === key) { vid.hidden = true; img.hidden = false; img.style.opacity = 1; } };
-      const pr = vid.play(); if (pr && pr.catch) pr.catch(() => { if (G.clipKey === key) { vid.hidden = true; img.hidden = false; img.style.opacity = 1; } });
-      setTimeout(() => { if (G.clipKey === key && !started) { vid.pause(); vid.hidden = true; img.hidden = false; img.style.opacity = 1; } }, 2500);
+      vid.style.width = v.w + 'px'; vid.loop = false; vid.style.opacity = 1; vid.src = v.src;
+      const fallback = () => { if (gen === atlasGen) { vid.pause(); vid.hidden = true; img.hidden = false; done.add(key); } };
+      vid.onplaying = () => { if (gen !== atlasGen) return; vid.hidden = false; img.hidden = true; };
+      vid.onended = () => { if (gen !== atlasGen) return; done.add(key); };
+      vid.onerror = fallback;
+      const pr = vid.play(); if (pr && pr.catch) pr.catch(fallback);
+      setTimeout(() => { if (gen === atlasGen && vid.paused && vid.currentTime === 0) fallback(); }, 2500);
       return;
     }
-    G.clipKey = null; place(showImage(mood, false));
-    if (!img.complete) img.onload = () => place(img.offsetHeight);
+    G.clipKey = null;
+    showImage(v && v.end ? v.end : mood);                     // after the calm clip, keep its resting frame
   }
 
   // drag & tap
@@ -475,7 +481,7 @@
       const title = fin ? x.finalTitle : lv.lessons[st.lesson], desc = fin ? lv.finalDesc : lv.lessonDesc[st.lesson];
       const eyebrow = fin ? x.allStages : `${t.stage} ${st.stage + 1} · ${st.lesson + 1}/${L}`;
       const resume = st.current && st.current.idx > 0 ? `<div class="rs">${esc(t.paw)} ${st.current.idx + 1} / ${st.current.plan.length}</div>` : '';
-      card = `<div class="lcardmap" id="mcard" style="left:${Math.max(200, Math.min(1010, p.x - 115))}px;top:334px"><button class="mclose" aria-label="Close">×</button><div class="eb">${esc(eyebrow)}</div><div class="tt">${esc(title)}</div><div class="ds">${esc(desc)}</div>${resume}<button class="bigbtn blue sm" data-go="1">${esc(t.start)}</button></div>`; }
+      card = `<div class="lcardmap" id="mcard" style="left:${Math.max(200, Math.min(1010, p.x - 115))}px;top:334px"><button class="mclose" aria-label="Close">×</button><div class="eb">${esc(eyebrow)}</div><div class="tt">${esc(title)}</div><div class="ds">${esc(tidy(desc))}</div>${resume}<button class="bigbtn blue sm" data-go="1">${esc(t.start)}</button></div>`; }
     view.innerHTML = `<section class="screen map">
       <div class="topbar"><button class="back" id="back" aria-label="Back">${BACK}</button>
         <div class="mtitle"><div>${esc(lv.title)}</div><small>${esc(lv.sub)}</small></div>
@@ -618,7 +624,7 @@
     const el = document.createElement('div'); el.id = 'devpanel'; el.className = 'devpanel';
     const levelsOf = (l) => [{ id: 'numbers', title: 'Nivel 1 · Números', stages: 4, lessons: 4 }].concat((window.LEVELS[l] || []).map((lv) => ({ id: lv.id, title: lv.title, stages: lv.stages.length, lessons: lv.lessons.length })));
     el.innerHTML = `<div class="devcard"><b>Modo prueba</b>
-      <label>Idioma <select id="dvL">${langs.map((l) => `<option>${l}</option>`).join('')}</select></label>
+      <label>Idioma <select id="dvL">${langs.map((l) => `<option value="${l}">${({ en: 'English', es: 'Español', ca: 'Català' })[l]}</option>`).join('')}</select></label>
       <label>Nivel <select id="dvV"></select></label>
       <label>Etapa <select id="dvS"></select></label>
       <label>Lección <select id="dvN"></select></label>
@@ -626,12 +632,19 @@
       <div class="devrow"><button id="dvSkip" class="dvb">Saltar ejercicio</button><button id="dvReset" class="dvb warn">Borrar progreso</button></div>
       <button id="dvClose" class="dvb">Cerrar</button></div>`;
     stage.appendChild(el);
-    const fill = () => { const l = $('dvL').value, lv = levelsOf(l);
-      $('dvV').innerHTML = lv.map((v) => `<option value="${v.id}">${esc(v.title)}</option>`).join(''); fillS(); };
+    // changing one menu keeps what was already picked in the others whenever it still exists
+    const keep = (id, v) => { const o = $(id).querySelector(`option[value="${v}"]`); if (o) $(id).value = v; };
+    const fill = () => { const l = $('dvL').value, lv = levelsOf(l), prev = $('dvV').value;
+      $('dvV').innerHTML = lv.map((v) => `<option value="${v.id}">${esc(v.title)}</option>`).join(''); if (prev) keep('dvV', prev); fillS(); };
     const fillS = () => { const v = levelsOf($('dvL').value).find((x) => x.id === $('dvV').value);
+      const ps = $('dvS').value, pn = $('dvN').value;
       $('dvS').innerHTML = Array.from({ length: v.stages }, (_, i) => `<option value="${i}">Etapa ${i + 1}</option>`).join('') + `<option value="${v.stages}">Etapa final</option>`;
-      $('dvN').innerHTML = Array.from({ length: v.lessons }, (_, i) => `<option value="${i}">Lección ${i + 1}</option>`).join('') + (v.id === 'numbers' ? '<option value="4">Repaso</option>' : ''); };
-    $('dvL').onchange = fill; $('dvV').onchange = fillS; fill();
+      $('dvN').innerHTML = Array.from({ length: v.lessons }, (_, i) => `<option value="${i}">Lección ${i + 1}</option>`).join('') + (v.id === 'numbers' ? '<option value="4">Repaso</option>' : '');
+      if (ps) keep('dvS', ps); if (pn) keep('dvN', pn); };
+    $('dvL').onchange = fill; $('dvV').onchange = fillS;
+    // start from where you are now (language and level on screen), not always English
+    const here = document.documentElement.lang; $('dvL').value = LE.LANGS.includes(here) ? here : (LE.db.lastLang || 'en');
+    fill(); if (G && G.id && G.lang === $('dvL').value) keep('dvV', G.id); fillS();
     const jump = () => { const l = $('dvL').value, id = $('dvV').value, s = Number($('dvS').value), n = Number($('dvN').value);
       LE.db.lastLang = l;
       if (id === 'numbers') { const st = LE.L(l); st.stagesDone = s; st.lesson = s >= 4 ? 0 : n; st.finalDone = false; st.current = null; }
