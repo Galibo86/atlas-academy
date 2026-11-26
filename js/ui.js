@@ -579,9 +579,9 @@
       <p class="sub">${esc(t.langName)}</p>
       <div class="cards">${cards.join('')}</div>
       <p class="sub soon">${esc(x.soon)}</p>
-      <button class="pill wardbtn" id="ward">${HANGER}${esc(HX[lang].open)}</button>
+      ${LE.player() ? `<button class="pill wardbtn" id="ward">${HANGER}${esc(HX[lang].open)}</button>` : ''}
       <img class="corner" src="${IMG.curious}" alt="Atlas lying down, curious" draggable="false"></section>`;
-    $('back').onclick = language; $('ward').onclick = () => wardrobe(() => levels(lang));
+    $('back').onclick = language; if ($('ward')) $('ward').onclick = () => wardrobe(() => levels(lang));
     view.querySelectorAll('.lv').forEach((b) => (b.onclick = () => (b.dataset.id === 'numbers' ? map(lang) : tmap(lang, b.dataset.id))));
   }
 
@@ -825,6 +825,7 @@
       <label>Lección <select id="dvN"></select></label>
       <div class="devrow"><button id="dvGo" class="dvb main">Ir al mapa</button><button id="dvPlay" class="dvb">Jugar ya</button></div>
       <div class="devrow"><button id="dvSkip" class="dvb">Saltar ejercicio</button><button id="dvReset" class="dvb warn">Borrar progreso</button></div>
+      <div class="devrow">Jugador ahora: <b>${LE.player() ? esc(NAME()) : 'ninguno'}</b></div>
       <div class="devrow"><button id="dvHat" class="dvb">Dar gorro</button><button id="dvXmas" class="dvb">Regalo de temporada</button></div>
       <div class="devrow"><button id="dvSave" class="dvb">Guardar copia</button><button id="dvLoad" class="dvb">Cargar copia</button></div>
       <input type="file" id="dvFile" accept=".json,application/json" hidden>
@@ -857,8 +858,9 @@
     $('dvReset').onclick = () => { el.remove(); overlay({ title: `Borrar el progreso de ${NAME() || 'este jugador'}?`, sub: 'No se puede deshacer (salvo con una copia).', primary: 'No', secondary: 'Borrar',
       onPrimary: () => {}, onSecondary: () => { LE.resetAll(); welcome(); } }); };
     $('dvClose').onclick = () => el.remove();
-    $('dvHat').onclick = () => { if (!LE.player()) return; el.remove(); earnHat(); showNewHats(); };
-    $('dvXmas').onclick = () => { if (!LE.player()) return; el.remove(); HT.checkSeason(LE.db, new Date(new Date().getFullYear(), 11, 10)); LE.save(); showNewHats(refreshDogs); };
+    const needPlayer = () => { el.remove(); overlay({ title: 'Primero elige un jugador', sub: 'Los gorros son de cada jugador. Ve a la portada, pulsa «Let’s play!» y crea o elige uno; luego vuelve a PRUEBA.', primary: 'Ir a la portada', onPrimary: welcome }); };
+    $('dvHat').onclick = () => { if (!LE.player()) return needPlayer(); el.remove(); earnHat(); showNewHats(); };
+    $('dvXmas').onclick = () => { if (!LE.player()) return needPlayer(); el.remove(); HT.checkSeason(LE.db, new Date(new Date().getFullYear(), 11, 10)); LE.save(); showNewHats(refreshDogs); };
     el.querySelectorAll('.dvpinok').forEach((b) => (b.onclick = () => { const inp = el.querySelector(`.dvpin[data-id="${b.dataset.id}"]`), v = inp.value.trim();
       if (v && !/^\d{4}$/.test(v)) { inp.classList.add('err'); return; }
       inp.classList.remove('err'); LE.setPin(b.dataset.id, v || null); b.textContent = v ? 'Guardado ✓' : 'Quitado ✓'; setTimeout(() => (b.textContent = 'Guardar'), 1500); }));
