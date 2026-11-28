@@ -266,3 +266,10 @@ h1{margin:0}
 .hatshow{display:flex;flex-direction:column;align-items:center;gap:8px;margin:6px 0 4px}.hatshow img{height:150px;animation:hatin .9s cubic-bezier(.2,1.4,.4,1) both}
 .hatshow b{font:800 26px/1 'Baloo 2',sans-serif}
 @keyframes hatin{0%{transform:scale(.2) rotate(-200deg);opacity:0}100%{transform:none;opacity:1}}
+
+/* French: fixed punctuation between boxes, colour swatch, smaller clue words */
+.slot.punct{width:auto;min-width:18px;border:0;background:none;box-shadow:none;color:var(--ink);font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 2px}
+.swatch{width:120px;height:70px;border-radius:18px;border:3px solid var(--line);margin:0 auto 10px}
+.tword.sm{font-size:56px}
+.krow.accents.many{gap:7px}.krow.accents.many .key.accent{width:56px;height:62px;font-size:32px}
+.question.topic:has(.swatch) .tword.sm{font-size:44px}.question.topic:has(.swatch) .swatch{height:56px}

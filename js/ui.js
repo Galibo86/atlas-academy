@@ -19,7 +19,7 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // the player's name replaces "Feli" in every text
   const NAME = () => (LE.player() ? LE.player().name : '');
-  const swapName = (v) => (typeof v === 'string' ? v.replace(/Feli/g, NAME()).replace(/, !/g, '!').replace(/ !/g, '!')
+  const swapName = (v) => (typeof v === 'string' ? (NAME() ? v.replace(/Feli/g, NAME()) : v.replace(/,? ?Feli/g, '').replace(/ ([!?])/g, '\u00A0$1'))
     : typeof v === 'function' ? (...a) => swapName(v(...a)) : Array.isArray(v) ? v.map(swapName) : v);
   const T = (lang) => new Proxy(C.ui[lang], { get: (o, k) => swapName(o[k]) });
 
@@ -39,7 +39,10 @@
     ca: { wardrobe: 'L’armari de l’Atlas', newHat: 'Barret nou!', earned: 'Has acabat una etapa: això és per a l’Atlas.', wearIt: 'Posa-li a l’Atlas', later: 'Després', great: 'Genial!',
       christmas: 'Bon Nadal! Un regal per a l’Atlas.', reyes: 'Els Reis li han portat un regal a l’Atlas!', none: 'Sense barret', locked: 'Acaba una etapa per guanyar-lo', dec: 'Arriba al desembre', jan: 'Arriba el 6 de gener',
       count: (a, b) => `${a} de ${b} barrets`, open: 'Armari' } };
-  const HL = () => HX[['en', 'es', 'ca'].includes(document.documentElement.lang) ? document.documentElement.lang : 'en'];
+  HX.fr = { wardrobe: 'L’armoire d’Atlas', newHat: 'Nouveau chapeau !', earned: 'Tu as fini une étape : c’est pour Atlas.', wearIt: 'Mets-le à Atlas', later: 'Plus tard', great: 'Super !',
+    christmas: 'Joyeux Noël ! Un cadeau pour Atlas.', reyes: 'Les Rois mages ont apporté un cadeau à Atlas !', none: 'Sans chapeau', locked: 'Finis une étape pour le gagner', dec: 'Arrive en décembre', jan: 'Arrive le 6 janvier',
+    count: (a, b) => `${a} chapeaux sur ${b}`, open: 'Armoire' };
+  const HL = () => HX[['en', 'es', 'ca', 'fr'].includes(document.documentElement.lang) ? document.documentElement.lang : 'en'];
   const worn = () => (LE.player() ? HT.state(LE.db).worn : null);
   // shows the "New hat!" card for every hat waiting to be shown, one after another
   function showNewHats(after) {
@@ -95,7 +98,7 @@
     view.innerHTML = `<section class="screen welcome">
       <div class="blob b1"></div><div class="blob b2"></div><div class="hill h1"></div><div class="hill h2"></div>
       <div class="wtext"><div class="eyebrow">${PAW('#2F6FED')}<span>NUMBERS · 1 TO 20</span></div>
-        <h1>Atlas<br><span>Academy</span></h1><p>Learn to spell your numbers in English, Català and Español — with Atlas by your side.</p>
+        <h1>Atlas<br><span>Academy</span></h1><p>Learn to spell in English, Català, Español and Français — with Atlas by your side.</p>
         <button class="bigbtn orange" id="play">Let’s play!</button></div>
       ${LE.player() ? dogHTML('whero') : `<img class="whero" src="${IMG.sitting}" alt="Atlas, a black and white border collie" draggable="false">`}
       <div class="wbubble">${LE.player() ? `Hi ${esc(NAME())}! Ready?` : 'Hi! Ready?'}</div>
@@ -174,13 +177,15 @@
   function language() {
     document.documentElement.lang = 'en';
     const fresh = LE.LANGS.every((l) => progressOf(LE.L(l)) === 0 && !LE.L(l).current);
-    const colors = { en: '#2F6FED', ca: '#E2A400', es: '#E5484D' };
-    const order = ['en', 'ca', 'es'];
+    const colors = { en: '#2F6FED', ca: '#E2A400', es: '#E5484D', fr: '#8B5CF6' };
+    const order = ['en', 'ca', 'es', 'fr'];
     view.innerHTML = `<section class="screen lang">
       <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>Which language today?</h1></div>
       <p class="sub">Each language has its own map and progress.</p>
-      <div class="cards">${order.map((l) => { const st = LE.L(l), p = progressOf(st);
-        const meta = st.finalDone ? '★ Level 1' : p === 0 && !st.current ? 'Not started yet' : st.stagesDone >= 4 ? T(l).finalStage : `${T(l).stage} ${st.stagesDone + 1} · ${st.lesson >= 4 ? T(l).review : T(l).lessons[st.lesson]}`;
+      <div class="cards">${order.map((l) => { const st = LE.L(l), topicOnly = l === 'fr';
+        const tl = (window.LEVELS[l] || []).map((lv) => tProgress(lv, tState(l, lv.id)));
+        const p = topicOnly ? tl.reduce((a, b) => a + b, 0) / (tl.length || 1) : progressOf(st);
+        const meta = topicOnly ? (p === 0 ? 'Not started yet' : `${tl.filter((x) => x === 1).length} ★ · ${tl.length} levels`) : st.finalDone ? '★ Level 1' : p === 0 && !st.current ? 'Not started yet' : st.stagesDone >= 4 ? T(l).finalStage : `${T(l).stage} ${st.stagesDone + 1} · ${st.lesson >= 4 ? T(l).review : T(l).lessons[st.lesson]}`;
         return `<button class="lcard${fresh && l === 'en' ? ' starthere' : ''}" data-l="${l}">${fresh && l === 'en' ? '<span class="ribbon">Start here</span>' : ''}
           <span class="code" style="background:${colors[l]}">${l.toUpperCase()}</span><span class="lname">${T(l).langName}</span><span class="meta">${esc(meta)}</span>
           <span class="bar"><span style="width:${Math.round(p * 100)}%;background:${colors[l]}"></span></span></button>`; }).join('')}</div>
@@ -282,7 +287,7 @@
       <div id="hint" class="hint" hidden></div></section>`; }
   function buildKeyboard() {
     const kb = $('keyboard'); const acc = C.keyboard[G.lang].accents;
-    const row = (chars, accent) => `<div class="krow${accent ? ' accents' : ''}">${chars.map((ch) => `<button class="key${accent ? ' accent' : ''}" data-ch="${esc(ch)}" aria-label="Letter ${esc(ch)}">${esc(ch)}</button>`).join('')}</div>`;
+    const row = (chars, accent) => `<div class="krow${accent ? ' accents' : ''}${accent && chars.length > 11 ? ' many' : ''}">${chars.map((ch) => `<button class="key${accent ? ' accent' : ''}" data-ch="${esc(ch)}" aria-label="Letter ${esc(ch)}">${esc(ch)}</button>`).join('')}</div>`;
     kb.innerHTML = row(ALPHA.slice(0, 9)) + row(ALPHA.slice(9, 18)) + row(ALPHA.slice(18)) + (acc.length ? row(acc, true) : '');
     kb.querySelectorAll('.key').forEach((k) => k.addEventListener('pointerdown', (e) => startDrag(e, { ch: k.dataset.ch, from: 'key' })));
   }
@@ -553,7 +558,9 @@
   // =====================================================================
   // Topic levels (comparatives, hiato/diptongo…): levels menu, map, game
   // =====================================================================
+  const FIXED = /^[ |\-’'?!]$/;
   const LX = {
+    fr: { choose: 'Choisis un niveau', newTag: 'Nouveau', soon: 'D’autres niveaux arrivent bientôt', lvl: 'Niveau', stageDone: (n) => `Étape ${n} terminée !`, levelDone: 'Niveau terminé !', star: 'Tu as gagné l’étoile !', allStages: 'Toutes les étapes', finalTitle: 'Étape finale', rightAnswer: 'Bonne réponse', notThat: 'Pas celui-là — essaie un autre !', missCut: 'Il manque une coupure !', nowDecide: 'Maintenant, lequel ?' },
     en: { choose: 'Choose a level', newTag: 'New', soon: 'More levels coming soon', lvl: 'Level', stageDone: (n) => `Stage ${n} complete!`, levelDone: 'Level complete!', star: 'You won the star!', allStages: 'All stages', finalTitle: 'Final stage', rightAnswer: 'Right answer', notThat: 'Not that one — try another!', missCut: 'A cut is missing!', nowDecide: 'Now: which one is it?' },
     es: { choose: 'Elige un nivel', newTag: 'Nuevo', soon: 'Pronto habrá más niveles', lvl: 'Nivel', stageDone: (n) => `¡Etapa ${n} completada!`, levelDone: '¡Nivel completado!', star: '¡Has ganado la estrella!', allStages: 'Todas las etapas', finalTitle: 'Etapa final', rightAnswer: 'Respuesta correcta', notThat: '¡Esa no! Prueba otra.', missCut: '¡Falta algún corte!', nowDecide: 'Ahora: ¿hiato o diptongo?' },
     ca: { choose: 'Tria un nivell', newTag: 'Nou', soon: 'Aviat hi haurà més nivells', lvl: 'Nivell', stageDone: (n) => `Etapa ${n} completada!`, levelDone: 'Nivell completat!', star: 'Has guanyat l’estrella!', allStages: 'Totes les etapes', finalTitle: 'Etapa final', rightAnswer: 'Resposta correcta', notThat: 'Aquesta no! Prova’n una altra.', missCut: 'Falta algun tall!', nowDecide: 'Ara: quin és?' }
@@ -571,9 +578,9 @@
     document.documentElement.lang = lang;
     const t = T(lang), x = LX[lang], num = LE.L(lang);
     const numP = num.finalDone ? 1 : (num.stagesDone * 4 + Math.min(num.lesson, 4)) / 17;
-    const cards = [`<button class="lcard lv" data-id="numbers"><span class="code" style="background:#22A86B">1–20</span><span class="lname">${esc(t.level)}</span><span class="meta">${esc(t.numbers)}</span><span class="bar"><span style="width:${Math.round(numP * 100)}%;background:#22A86B"></span></span></button>`]
-      .concat((window.LEVELS[lang] || []).map((lv, i) => { const st = tState(lang, lv.id), p = tProgress(lv, st);
-        return `<button class="lcard lv" data-id="${lv.id}">${p === 0 ? `<span class="ribbon">${esc(x.newTag)}</span>` : ''}<span class="code" style="background:${lv.color}">${i + 2}</span><span class="lname sm">${esc(lv.title)}</span><span class="meta">${esc(lv.sub)}</span><span class="bar"><span style="width:${Math.round(p * 100)}%;background:${lv.color}"></span></span></button>`; }));
+    const hasNum = lang !== 'fr', first = hasNum ? 2 : 1;
+    const cards = (hasNum ? [`<button class="lcard lv" data-id="numbers"><span class="code" style="background:#22A86B">1–20</span><span class="lname">${esc(t.level)}</span><span class="meta">${esc(t.numbers)}</span><span class="bar"><span style="width:${Math.round(numP * 100)}%;background:#22A86B"></span></span></button>`] : []).concat((window.LEVELS[lang] || []).map((lv, i) => { const st = tState(lang, lv.id), p = tProgress(lv, st);
+        return `<button class="lcard lv" data-id="${lv.id}">${p === 0 ? `<span class="ribbon">${esc(x.newTag)}</span>` : ''}<span class="code" style="background:${lv.color}">${i + first}</span><span class="lname sm">${esc(lv.title)}</span><span class="meta">${esc(lv.sub)}</span><span class="bar"><span style="width:${Math.round(p * 100)}%;background:${lv.color}"></span></span></button>`; }));
     view.innerHTML = `<section class="screen lang">
       <div class="head"><button class="back" id="back" aria-label="Back">${BACK}</button><h1>${esc(x.choose)}</h1></div>
       <p class="sub">${esc(t.langName)}</p>
@@ -646,7 +653,7 @@
   function tLoad() {
     const ex = G.cur.plan[G.cur.idx], fin = G.cur.final;
     const letters = ex.kind === 'write' ? Array.from(ex.answer) : [];
-    const fixed = (c) => c === ' ' || c === '|';                 // spaces and row breaks are not typed
+    const fixed = (c) => FIXED.test(c);                           // spaces, row breaks, hyphens, apostrophes and ? ! are shown, not typed
     const max = fin ? CFG.finalBones : ex.kind === 'write' ? CFG.livesFor(letters.filter((c) => !fixed(c)).length) : 3;
     Object.assign(G, { ex, letters, max, lives: fin ? G.cur.bonesLeft : max, typed: letters.map((c) => (fixed(c) ? c : null)), locked: letters.map(fixed),
       bad: [], wrongOpts: [], resets: 0, failed: false, hinted: false, ghost: false, cursor: null, done: false, phase: 'play', isBonus: false,
@@ -670,8 +677,9 @@
     if (write) {
       const rows = G.letters.join('').split('|'), n = Math.max(...rows.map((r) => r.length)), size = rows.length > 1 ? [42, 4, 32] : n <= 7 ? [76, 10, 52] : n <= 10 ? [60, 7, 42] : [50, 5, 36];
       const slots = $('slots'); slots.style.gap = size[1] + 'px'; slots.classList.toggle('two', rows.length > 1);
-      let row = 1; const tag = () => (rows.length > 1 ? `<span class="gapn">${row}</span>` : '');
+      let row = 1; const tag = () => (rows.length > 1 && /gapn/.test(G.ex.prompt) ? `<span class="gapn">${row}</span>` : '');
       slots.innerHTML = tag() + G.letters.map((c, i) => { if (c === '|') { row++; return `<div class="brk"></div>${tag()}`; } if (c === ' ') return `<div class="slot gap" style="width:${Math.round(size[0] / 2)}px"></div>`;
+        if (FIXED.test(c)) return `<div class="slot gap punct" style="font-size:${size[2]}px">${esc(c)}</div>`;
         const has = G.typed[i] != null;
         const cls = 'slot' + (G.locked[i] ? ' ok' : G.bad.includes(i) ? ' bad' : has ? ' filled' : '') + (G.cursor === i && !has ? ' target' : '');
         return `<div class="${cls}" data-i="${i}" style="width:${size[0]}px;font-size:${size[2]}px">${esc(has ? G.typed[i] : '')}</div>`; }).join('');
@@ -769,7 +777,7 @@
     const t = G.t;
     if (G.cur.final) return overlay({ side: true, title: t.finalOutTitle, sub: t.finalOutSub, primary: t.finalRetry, onPrimary: () => tgame(G.lang, G.id, true) });
     overlay({ side: true, title: t.resetTitle, sub: `${LX[G.lang].rightAnswer}: ${(G.ex.answerText || G.ex.answer).replace('|', ' … ')}`, primary: t.tryAgain, onPrimary: () => {
-      G.resets += 1; G.typed = G.letters.map((c) => (c === ' ' || c === '|' ? c : null)); G.locked = G.letters.map((c) => c === ' ' || c === '|');
+      G.resets += 1; G.typed = G.letters.map((c) => (FIXED.test(c) ? c : null)); G.locked = G.letters.map((c) => FIXED.test(c));
       Object.assign(G, { cuts: new Set(), cutsOk: new Set(), cutsBad: [], miss: false, splitDone: false, place: {}, sel: null, sortOk: new Set(), sortBad: [] });
       G.wrongOpts = []; G.lives = G.max; G.phase = 'play'; render(); } });
   }
@@ -817,9 +825,9 @@
   function devPanel() {
     const langs = LE.LANGS; const old = document.getElementById('devpanel'); if (old) { old.remove(); return; }
     const el = document.createElement('div'); el.id = 'devpanel'; el.className = 'devpanel';
-    const levelsOf = (l) => [{ id: 'numbers', title: 'Nivel 1 · Números', stages: 4, lessons: 4 }].concat((window.LEVELS[l] || []).map((lv) => ({ id: lv.id, title: lv.title, stages: lv.stages.length, lessons: lv.lessons.length })));
+    const levelsOf = (l) => (l === 'fr' ? [] : [{ id: 'numbers', title: 'Nivel 1 · Números', stages: 4, lessons: 4 }]).concat((window.LEVELS[l] || []).map((lv) => ({ id: lv.id, title: lv.title, stages: lv.stages.length, lessons: lv.lessons.length })));
     el.innerHTML = `<div class="devcard"><b>Modo prueba</b>
-      <label>Idioma <select id="dvL">${langs.map((l) => `<option value="${l}">${({ en: 'English', es: 'Español', ca: 'Català' })[l]}</option>`).join('')}</select></label>
+      <label>Idioma <select id="dvL">${langs.map((l) => `<option value="${l}">${({ en: 'English', es: 'Español', ca: 'Català', fr: 'Français' })[l]}</option>`).join('')}</select></label>
       <label>Nivel <select id="dvV"></select></label>
       <label>Etapa <select id="dvS"></select></label>
       <label>Lección <select id="dvN"></select></label>

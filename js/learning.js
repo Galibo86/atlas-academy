@@ -42,7 +42,7 @@ window.LEARN = (function () {
   function setPin(id, pin) { const x = players.list.find((p) => p.id === id); if (!x) return; if (pin) x.pin = pin; else delete x.pin; savePlayers(); }
   function peek(id) { try { return JSON.parse(localStorage.getItem(keyFor(id))) || {}; } catch (e) { return {}; } }   // another player's saved data, read-only
   const player = () => (players && players.list.find((x) => x.id === players.active)) || null;
-  const LANGS = ['en', 'es', 'ca'];
+  const LANGS = ['en', 'es', 'ca', 'fr'];
 
   // ---------- storage ----------
   function blankLang() {

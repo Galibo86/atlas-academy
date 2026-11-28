@@ -22,7 +22,8 @@ window.CONTENT = {
   keyboard: {
     en: { accents: [] },
     es: { accents: ['á','é','í','ó','ú','ü','ñ'] },
-    ca: { accents: ['à','è','é','í','ï','ò','ó','ú','ü','ç','·'] }
+    ca: { accents: ['à','è','é','í','ï','ò','ó','ú','ü','ç','·'] },
+    fr: { accents: ['é','è','ê','ë','à','â','ç','î','ï','ô','ù','û','œ'] }
   },
 
   // Clue questions. x/a/b are already formatted (digit or word).
@@ -46,6 +47,25 @@ window.CONTENT = {
   },
 
   ui: {
+    fr: {
+      langName: 'Français', write: 'Écris le mot', clue: 'Réponds', newNum: 'Nouveau mot', check: 'Vérifier',
+      stage: 'Étape', paw: 'Patte', level: 'Niveau', numbers: 'Français', change: 'Changer', start: 'Commencer',
+      starTodo: 'Termine le niveau pour gagner l’étoile', starDone: 'Étoile gagnée !',
+      bonus: 'Bonus', bonusChip: 'Bonus · révision', bonusWon: 'Bonus réussi !', bonusWonSub: 'Bravo !', bonusLost: 'Pas cette fois !', bonusLostSub: 'La leçon compte quand même.',
+      lessons: ['Découvre', 'Écris', 'Sans aide'], review: 'Révision', finalStage: 'Étape finale', finalSub: '10 mots · 5 os',
+      lessonDesc: ['Choisis le bon mot', 'Écris le mot', 'Écris de mémoire'],
+      reviewDesc: 'Révise les mots difficiles', finalDesc: '10 mots de toutes les étapes. Atlas a 5 os pour tout le défi.',
+      idle: 'Tu peux le faire, Feli !', drag: 'Hmm… où va cette lettre ?', ready: 'Fini ? Appuie sur Vérifier !', lost1: 'Presque ! Corrige les rouges.',
+      last: 'Attention, Feli… il reste un os.', intro: 'Un nouveau mot ! Copie-le avec moi.',
+      resetTitle: 'Plus d’os — on recommence', resetSub: 'Atlas récupère tous ses os. Même question, nouveau départ.', tryAgain: 'Réessayer',
+      finalOutTitle: 'Plus d’os !', finalOutSub: 'Pas grave — réessaie avec 10 nouveaux mots.', finalRetry: 'Réessayer',
+      wellDone: 'Bravo, Feli !', perfect: 'Parfait du premier coup !', done: 'Fini !', next: 'Continuer',
+      leaveTitle: 'Quitter la leçon ?', leaveSub: (p) => `Ta progression est enregistrée. La prochaine fois, tu reprendras à la patte ${p}.`, keep: 'Continuer à jouer', toMap: 'Aller à la carte',
+      lessonDone: 'Leçon terminée !', exercises: 'Exercices', perfectN: 'Parfaits', boss: 'Mot du chef', mastery: 'Maîtrise de l’étape', backMap: 'Retour à la carte',
+      stageDone: (s) => `Étape ${s} terminée !`, stageSub: 'Mots maîtrisés', unlocked: 'Débloqué', unlockedFinal: 'Étape finale',
+      levelDone: 'Niveau terminé !', youWon: 'Tu as gagné l’étoile', canSpell: 'Mots que tu sais écrire', practise: 'S’entraîner', star: 'Tu es une star, Feli !',
+      finalResult: (left) => `10 / 10 mots · ${left} os sur 5`, rotate: 'Tourne la tablette', bonesLeft: (l, m) => `${l} os sur ${m}`
+    },
     en: {
       langName: 'English', write: 'Write the number', clue: 'Answer the clue', newNum: 'New number', check: 'Check',
       stage: 'Stage', paw: 'Paw', level: 'Level 1', numbers: 'Numbers 1 to 20', change: 'Change', start: 'Start',
