@@ -68,7 +68,7 @@
   function cmpExercise(stage, item, sup, kind) {
     const [a, c, su, sc, ss] = item; const ans = sup ? su : c; const s = sup ? ss : sc;
     const prompt = `<div class="tsent">${sentence(s, kind === 'write2' ? 'two' : 'one')}</div><div class="tadj">(${esc(a)})</div>`;
-    if (kind === 'choice') return { kind: 'choice', id: a, prompt, options: shuffle([ans, sup ? c : su, wrongForm(stage, a, sup)]), answer: ans,
+    if (kind === 'choice') return { kind: 'choice', id: a, prompt, options: shuffle([ans, sup ? c : su, wrongForm(stage, a, sup), (sup ? 'most ' : 'more ') + ans]), answer: ans,   // 4th: the double-form mistake (more taller)
       explain: `${a} → ${c} → the ${su}` };
     const answer = kind === 'write2' ? (sup ? `the ${su}` : `${c} than`) : ans;
     return { kind: 'write', id: a, prompt, answer, explain: `${a} → ${c} → the ${su}` };
