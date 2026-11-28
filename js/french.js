@@ -41,7 +41,7 @@
   function clue(it) {
     const [, es, en, x] = it;
     if (x === 'n') return `<div class="tword">${esc(es)}</div>`;
-    if (x && x[0] === '#') return `<div class="swatch" style="background:${x}"></div><div class="tword sm">${esc(es)}</div><div class="tadj">${esc(en)}</div>`;
+    if (x && x[0] === '#') return `<div class="swatch big" style="background:${x}" role="img" aria-label="${esc(en)}"></div>`;   // colours: only the colour, no words
     return `<div class="tword sm">${esc(es)}</div><div class="tadj">${esc(en)}</div>`;
   }
   // long answers go on two rows, split at the space nearest the middle
@@ -52,8 +52,9 @@
     return w.slice(0, best) + '|' + w.slice(best + 1);
   }
   const write = (it, chip) => ({ kind: 'write', id: it[0], prompt: clue(it), answer: rows(it[0]), answerText: it[0], explain: `${it[1]} → ${it[0]}`, chip });
-  function choose(it, pool) {
-    const others = shuffle(pool.filter((x) => x[0] !== it[0])).slice(0, 2).map((x) => x[0]);
+  // 3 options in stage 1; 4 from stage 2, so with 3 bones he can't get it right just by ruling out
+  function choose(it, pool, n) {
+    const others = shuffle(pool.filter((x) => x[0] !== it[0])).slice(0, n - 1).map((x) => x[0]);
     return { kind: 'choice', id: it[0], prompt: clue(it), options: shuffle([it[0], ...others]), answer: it[0], explain: `${it[1]} → ${it[0]}` };
   }
 
@@ -67,7 +68,7 @@
       chip: ['Choisis le mot', 'Écris le mot', 'Écris de mémoire'],
       plan(stage, lesson) {
         const items = shuffle(data[stage]).slice(0, PER_LESSON);
-        let ex = lesson === 0 ? items.map((it) => choose(it, data[stage])) : items.map((it) => write(it));
+        let ex = lesson === 0 ? items.map((it) => choose(it, data[stage], stage === 0 ? 3 : 4)) : items.map((it) => write(it));
         if (lesson === 2 && stage > 0) ex = shuffle(ex.slice(0, PER_LESSON - 2).concat(shuffle(data.slice(0, stage).flat()).slice(0, 2).map((it) => write(it))));
         if (stage > 0) ex = ex.concat(shuffle(data.slice(0, stage).flat()).slice(0, BONUS).map((it) => write(it, 'Bonus · révision')));
         return ex;

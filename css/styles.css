@@ -273,3 +273,7 @@ h1{margin:0}
 .tword.sm{font-size:56px}
 .krow.accents.many{gap:7px}.krow.accents.many .key.accent{width:56px;height:62px;font-size:32px}
 .question.topic:has(.swatch) .tword.sm{font-size:44px}.question.topic:has(.swatch) .swatch{height:56px}
+.swatch.big{width:190px;height:120px;border-radius:26px;margin:4px auto 0}
+.question.topic .swatch.big{width:190px;height:120px}
+.choices:has(.opt:nth-child(4)){gap:18px 24px}.choices:has(.opt:nth-child(4)) .opt{min-width:340px}
+.choices:has(.opt:nth-child(4)){display:grid;grid-template-columns:1fr 1fr;width:800px;left:75px}.choices:has(.opt:nth-child(4)) .opt{min-width:0;font-size:34px;padding:24px 18px 20px}
